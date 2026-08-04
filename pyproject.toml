@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fast-mimi"
+version = "0.1.0"
+description = "Independent PyTorch implementation of Kyutai's Mimi neural audio codec"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{ name = "fast-mimi contributors" }]
+dependencies = [
+  "huggingface-hub>=0.28",
+  "safetensors>=0.4",
+  "torch>=2.5",
+]
+
+[project.optional-dependencies]
+audio = ["numpy>=1.26", "scipy>=1.11", "soundfile>=0.12"]
+test = ["pytest>=8", "transformers==5.14.1"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+markers = [
+  "integration: downloads the published kyutai/mimi checkpoint",
+  "cuda: requires a CUDA-capable GPU",
+]
+
+[tool.ruff.lint]
+extend-select = ["D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
