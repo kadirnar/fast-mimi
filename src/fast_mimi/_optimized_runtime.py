@@ -2326,14 +2326,34 @@ class OptimizedLongMimi(CompiledSeanetsMimi):
         )
 
 
-class AdaptiveMimi:
-    """Use eager PyTorch for short clips and the profiled long-form path otherwise."""
+class OptimizedShortMimi(OptimizedLongMimi):
+    """Quality-safe short-form path with an exact float32 SEANet decoder."""
 
-    long_audio_samples = 240_000
+    def __init__(self, model: Any, *, packed_qkv: bool) -> None:
+        self._short_packed_qkv = packed_qkv
+        super().__init__(model)
+
+    def transformer(self, hidden: torch.Tensor, prefix: str) -> torch.Tensor:
+        """Use packed QKV only for the quality-gated five-second shape."""
+        if self._short_packed_qkv:
+            return self._packed_qkv(hidden, prefix)
+        return super().transformer(hidden, prefix)
+
+    def decoder(self, embeddings: torch.Tensor) -> torch.Tensor:
+        """Retain the exact compiled FP32 decoder for short waveforms."""
+        return self._compiled_decoder(embeddings)
+
+
+class AdaptiveMimi:
+    """Dispatch quality-gated five-, ten-, and 100-second SM120 runtimes."""
+
+    five_second_samples = 120_000
+    ten_second_samples = 240_000
+    hundred_second_samples = 2_400_000
 
     def __init__(self, model: Any) -> None:
         self.model = model
-        self.short_audio = CompiledSeanetsMimi(model)
+        self.short_audio: dict[int, OptimizedShortMimi] = {}
         self.long_audio: OptimizedLongMimi | None = None
 
     def forward(
@@ -2342,8 +2362,18 @@ class AdaptiveMimi:
         padding_mask: torch.Tensor,
         num_quantizers: int,
     ) -> Any:
-        if input_values.shape[-1] < self.long_audio_samples:
-            return self.short_audio.forward(input_values, padding_mask, num_quantizers)
-        if self.long_audio is None:
-            self.long_audio = OptimizedLongMimi(self.model)
-        return self.long_audio.forward(input_values, padding_mask, num_quantizers)
+        samples = input_values.shape[-1]
+        if samples in {self.five_second_samples, self.ten_second_samples}:
+            runtime = self.short_audio.get(samples)
+            if runtime is None:
+                runtime = OptimizedShortMimi(
+                    self.model,
+                    packed_qkv=samples == self.five_second_samples,
+                )
+                self.short_audio[samples] = runtime
+            return runtime.forward(input_values, padding_mask, num_quantizers)
+        if samples == self.hundred_second_samples:
+            if self.long_audio is None:
+                self.long_audio = OptimizedLongMimi(self.model)
+            return self.long_audio.forward(input_values, padding_mask, num_quantizers)
+        raise RuntimeError(f"unsupported optimized Mimi input length: {samples}")

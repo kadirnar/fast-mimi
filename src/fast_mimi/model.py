@@ -55,7 +55,16 @@ _DISABLED_ENV_VALUES = frozenset({"1", "true", "yes"})
 # dispatch guards, not general model constraints.
 _PROFILED_SM_CAPABILITY = (12, 0)
 _PROFILED_ONE_SECOND_AUDIO_SHAPE = (1, 1, 24_000)
+_PROFILED_SHORT_AUDIO_SHAPES = frozenset(
+    {
+        (1, 1, 120_000),
+        (1, 1, 240_000),
+    }
+)
 _PROFILED_LONG_AUDIO_SHAPE = (1, 1, 2_400_000)
+_PROFILED_OPTIMIZED_AUDIO_SHAPES = _PROFILED_SHORT_AUDIO_SHAPES | {
+    _PROFILED_LONG_AUDIO_SHAPE
+}
 _PROFILED_ONE_SECOND_DECODER_SHAPE = (1, 512, 26)
 _PROFILED_LONG_DECODER_SHAPE = (1, 512, 2_500)
 _PROFILED_LONG_TRANSFORMER_SHAPE = (1, 2_500, 512)
@@ -3277,12 +3286,12 @@ class MimiModel(nn.Module):
             and not torch.compiler.is_compiling()
             and input_values.device.type == "cuda"
             and input_values.dtype == torch.float32
-            and tuple(input_values.shape) == _PROFILED_LONG_AUDIO_SHAPE
+            and tuple(input_values.shape) in _PROFILED_OPTIMIZED_AUDIO_SHAPES
             and input_values.is_contiguous()
             and not input_values.requires_grad
             and padding_mask.device == input_values.device
             and padding_mask.dtype == torch.bool
-            and tuple(padding_mask.shape) == _PROFILED_LONG_AUDIO_SHAPE
+            and tuple(padding_mask.shape) == tuple(input_values.shape)
             and padding_mask.is_contiguous()
             and num_quantizers == 8
             and audio_codes is None
@@ -3308,9 +3317,9 @@ class MimiModel(nn.Module):
         """Run the accepted runtime or permanently fail closed to pure PyTorch."""
         try:
             if self._optimized_long_runtime is None:
-                from ._optimized_runtime import OptimizedLongMimi
+                from ._optimized_runtime import AdaptiveMimi
 
-                self._optimized_long_runtime = OptimizedLongMimi(self)
+                self._optimized_long_runtime = AdaptiveMimi(self)
             output = self._optimized_long_runtime.forward(
                 input_values,
                 padding_mask,

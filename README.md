@@ -6,12 +6,32 @@ Fast-Mimi is a Transformers-free PyTorch inference runtime for
 [Kyutai Mimi](https://huggingface.co/kyutai/mimi), optimized for RTX 5070 Ti
 (SM120) with CUDA Graphs, Triton, cuDNN, CUDA, and CUTLASS.
 
-## 100-second end-to-end results
+## End-to-end results
 
 Measurements use an RTX 5070 Ti (SM120), 24 kHz mono audio, eight codebooks,
-and exactly 2,400,000 samples. The first call, including compilation and
-autotuning, is excluded. Only accepted optimizations present in production code
-are listed.
+and exact five-, ten-, or 100-second inputs. The first call is excluded. Only
+accepted production optimizations are listed.
+
+### 5-second audio
+
+| Method | Latency | Speedup | Real-time Factor |
+|---|---:|---:|---:|
+| Pure PyTorch FP32 | 10.033 ms | 1.0000x | 498x |
+| Inductor SEANet | 9.313 ms | 1.0772x | 537x |
+| Exact short-form runtime | 5.546 ms | 1.8089x | 901x |
+| + packed QKV | 5.478 ms | 1.8314x | 913x |
+| Published Fast-Mimi API | **5.497 ms** | **1.8251x** | **910x** |
+
+### 10-second audio
+
+| Method | Latency | Speedup | Real-time Factor |
+|---|---:|---:|---:|
+| Pure PyTorch FP32 | 12.644 ms | 1.0000x | 791x |
+| Inductor SEANet | 10.653 ms | 1.1869x | 939x |
+| Exact short-form runtime | 9.260 ms | 1.3654x | 1,080x |
+| Published Fast-Mimi API | **9.276 ms** | **1.3631x** | **1,078x** |
+
+### 100-second audio
 
 | Method | Latency | Speedup | Real-time Factor |
 |---|---:|---:|---:|
@@ -59,11 +79,9 @@ print(output.audio_codes.shape)
 print(output.audio_values.shape)
 ```
 
-Short clips, other supported shapes, streaming calls, CPU execution, and
-non-SM120 GPUs use the independent portable PyTorch path. The optimized path
-was validated with PyTorch `2.13.0+cu130`, Triton `3.7.1`, cuDNN frontend
-`1.27.0`, TileLang `0.1.13`, CUDA runtime 13.0, the CUDA 13.3 compiler/CCCL
-packages, Linux, and SM120.
+Other shapes, streaming calls, CPU execution, and non-SM120 GPUs use the
+portable PyTorch path. The optimized path was validated with PyTorch
+`2.13.0+cu130`, Triton `3.7.1`, cuDNN frontend `1.27.0`, CUDA 13, and SM120.
 
 ## License
 
