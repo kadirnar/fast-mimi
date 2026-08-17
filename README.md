@@ -21,70 +21,97 @@ The declared model identity is locked to:
 - Parameter fingerprint: `3feaa6168b191ffdebfd8f695b963f72c8d847a3966f7cc3283af6b38d437bb4`
 - Parameter count: `79,308,609`
 
-## Optimization results
+## 100 saniyelik optimizasyon sonuçları
 
-RTX 5070 Ti, SM120, 24 kHz mono, eight codebooks, exactly 100 seconds
-(2,400,000 samples). The first execution and all compilation/autotuning are
-excluded. Accepted core statistics use 50 alternating paired samples and
-10,000 bootstrap resamples. Every row below is an end-to-end result or states
-why a failed component/correctness gate made an end-to-end number invalid. The
-package contains only the independent PyTorch runtime and its optimized
-PyTorch, Triton, cuDNN, CUDA Graph, and CUTLASS paths; it contains no production
-Transformers import.
+Ölçümler RTX 5070 Ti (SM120), 24 kHz mono, sekiz codebook ve tam 100 saniye
+(2.400.000 örnek) içindir. İlk çağrı; derleme, plan seçimi ve autotune süresiyle
+birlikte ölçüm dışında bırakılmıştır. Son yayımlanabilir API sonucu 50+50
+dönüşümlü örnek ve 10.000 bootstrap tekrarına dayanır. Farklı araştırma
+oturumlarındaki küçük taban kaymalarını açık tutmak için bazı satırlarda hem
+uçtan uca değer hem de o deneyin mevcut yola göre artımlı oranı yazılmıştır.
+Üretim paketi yalnız bağımsız PyTorch, Triton, cuDNN, CUDA Graph ve CUDA/CUTLASS
+kodunu içerir; üretim ağacında `transformers` importu yoktur.
 
-| Technique / path | Precision or backend | 100 s end-to-end median | Measured acceleration | Quality gate and decision |
+| Teknik / çalışma yolu | Hassasiyet / backend | 100 sn uçtan uca medyan | Ölçülen hızlanma | Doğruluk kanıtı ve karar |
 |---|---|---:|---:|---|
-| Independent scratch PyTorch | FP32 | 135.241 ms | 1.0000x | Frozen reference baseline |
-| Previous Fast-Mimi release | FP32 | 87.091 ms | 1.5529x | Superseded |
-| Compiled graphs, CUDA Graphs, local-window path, selected Triton/cuDNN bundle | FP32 | 65.848 ms | 2.0538x | Accepted intermediate |
-| Monolithic Inductor bottleneck, including RVQ `cdist`/`argmin` | FP32 | 61.851 ms | 2.1866x | Rejected: seed 1103 crossed two nearest-code boundaries |
-| Quality-safe split bottleneck; RVQ selection kept outside Inductor | FP32 | **62.235 ms** | **2.1731x; 95% CI 2.1718x–2.1744x** | **Accepted core; exact codes, 20/20 long-audio seeds passed** |
-| Current public API, including caller-owned output clones | FP32 tensors; Triton/cuDNN/CUTLASS | **62.240 ms** | **2.1729x** | **Accepted; native CUTLASS loaded, zero code or audio-tolerance violations** |
-| Fastest cuDNN plans without quality ranking | FP32 | 61.836 ms | 2.1871x | Rejected: 31 audio-tolerance violations |
-| cuDNN attention in both attention stacks | FP16 | 58.624 ms | 2.3069x | Rejected: code and waveform quality failed |
-| cuDNN attention in both attention stacks | BF16 | 58.653 ms | 2.3058x | Rejected: code and waveform quality failed |
-| Corrected-accumulation cuDNN attention | FP32 | 59.452 ms | 2.2748x | Rejected: code/audio violations remained |
-| Decoder-only cuDNN attention | FP32 | 60.427 ms | 2.2381x | Rejected: hundreds of audio violations |
-| Global TF32 attention/MLP GEMMs | TF32 | 57.435 ms | 2.3547x | Rejected: 15–30 code mismatches and 358k–434k audio violations |
-| Decoder-only TF32 attention/MLP GEMMs | TF32 | 59.648 ms | 2.2673x | Rejected: codes exact, but 10k–17k audio violations |
-| Selective TF32 QKV/output/FC1/FC2 groups | TF32 | Not eligible: accuracy gate failed | 1.0023x–1.0273x incremental | Rejected: every grouping exceeded waveform tolerance |
-| CuTe DSL, all six GEMMs in attention layer 7 | FP16 | 61.490 ms | 2.1994x; 1.0062x incremental | Rejected: 13,187 audio violations and <1% gain |
-| CuTe DSL, all six GEMMs in attention layer 7 | BF16 | 61.492 ms | 2.1993x; 1.0065x incremental | Rejected: 335,855 audio violations |
-| Three-term compensated CuTe DSL | FP16 with FP32 compensation | 62.033 ms | 2.1801x; 0.9974x incremental | Rejected: slower and 1,974 violations |
-| Decoder residual block 6, both convolutions | FP16 | 60.875 ms | 2.2216x | Rejected: audio violations |
-| Decoder residual block 6, first convolution | FP16 | 61.425 ms | 2.2017x | Rejected: audio violations |
-| Decoder residual block 6, final convolution | FP16 | 61.950 ms | 2.1831x; 1.00015x incremental | Rejected alone: gain below 1% |
-| Decoder residual block 6, first convolution | BF16 | 61.490 ms | 2.1994x | Rejected: 189,135–338,842 violations |
-| Bit-exact QKV projection fusion | FP32 | 61.014 ms | 2.2166x; 1.0031x incremental | Rejected alone: gain below 1% |
-| QKV fusion plus Triton scaled residual | FP32 | 62.828 ms | 2.1526x; 0.9948x incremental | Rejected: slower |
-| Encoder NHWC/channels-last chain | FP32 | 1,388.750 ms | 0.0974x | Rejected: slower and incorrect |
-| Full custom Triton encoder, decoder, attention, RoPE, RVQ, and norms | FP32 | 555.001 ms | 0.2437x | Rejected: 16 code and 492,355 audio violations |
-| Native CUTLASS decoder layer 11, 22 SM120 variants | FP16 input, FP32 accumulation/output | Included in 62.235 ms core | 1.0645x over the accepted 65.848 ms bundle | Accepted with quality-ranked cuDNN recovery |
-| cuDNN multi-MMA residual-branch graph | FP32 | Not eligible: cuDNN frontend returned no engine | — | Deferred; fixed-pointer CUDA Graph fallback improved full decoder only 17.2471→17.2045 ms (1.0025x) |
-| Encoder suffix/stage-4 approximate fusion | FP32 | Not eligible: correctness gate failed | Encoder 26.631→22.122 ms (1.204x) | Rejected: 22 code mismatches; exact recovery fell to 1.036x encoder gain |
-| Encoder stage-7 fusion | FP32 | Not eligible: correctness gate failed | Stage 4.731→4.576 ms; full encoder 26.852 ms | Rejected: seven code mismatches and no encoder-level gain |
-| Encoder stage-10 fusion | FP32 | Not eligible: correctness gate failed | Stage 2.488→2.420 ms; full encoder 26.607 ms | Rejected: six code mismatches and no encoder-level gain |
-| Alternative local-attention geometries (32/256 through 250/250) | FP32 | Not eligible: correctness gate failed | No credible gain | Rejected: seed 1103 failed; most variants were slower |
-| TileLang Q projection | FP32 | Not eligible: component correctness failed (0.0473 ms) | 1.574x component | Rejected: max error 0.02073 |
-| TileLang FC1 | FP32 | Not eligible: component correctness failed (0.1399 ms) | 1.750x component | Rejected: max error 0.01163 |
-| ModelOpt encoder | FP8 | Not eligible: component correctness failed (81.796 ms) | 0.375x vs compiled FP32 | Rejected: slower and 3,015 code mismatches |
-| HQQ plus GemLite | INT8 weights | Not eligible: component correctness failed (0.2214 ms) | 0.919x component | Rejected: slower and max error 0.1867 |
-| HQQ plus GemLite | INT4 weights | Not eligible: component correctness failed (0.2370 ms) | 0.859x component | Rejected: slower and max error 2.016 |
-| TensorRT encoder, best tested configuration | FP32 accumulation | Not eligible: code gate failed (20.901 ms encoder) | 1.467x encoder | Rejected: code mismatches on every tested seed |
-| TensorRT decoder, best tested configuration | FP32 | Not eligible: component gate failed (154.457 ms decoder) | 0.111x decoder | Rejected: about 9x slower and quality failed |
-| TF32 and 3xTF32 GEMM variants | Mixed | Not eligible: component correctness failed | Faster GEMMs | Rejected: code mismatches |
-| Segmented cuDNN attention | FP32 | Not eligible: component gate failed (0.270 ms) | 0.937x component | Rejected: slower with the same error |
-| FP16 channel-recovery search | Mixed FP16/FP32 | Not eligible: component correctness failed | At least 112/128 channels had to remain FP32 | Rejected: recovery erased the gain |
-| Mixed FP32-input/FP16-weight cuDNN graph | Mixed | No executable engine | — | Deferred to a future SM120 cuDNN backend |
-| ModelOpt/TensorRT-LLM FP8 export | FP8 | Export failed | — | Deferred to a CUDA 12-compatible target; eager FP8 already failed quality |
-| Nsight Compute hardware counters | SM120 | `ERR_NVGPUCTRPERM` | — | Deferred to an administrator-enabled profiling target |
+| Sıfırdan bağımsız PyTorch | FP32 | **135.667 ms** | **1.0000x** | Dondurulmuş referans; 79.308.609 parametre ve sekiz codebook |
+| Önceki Fast-Mimi sürümü | FP32 | 87.091 ms | 1.5578x | Yerine daha hızlı sürüm geçti |
+| Inductor + CUDA Graph + yerel pencere + seçili Triton/cuDNN paketi | FP32 | 65.848 ms | 2.0603x | Kabul edilen ara sürüm |
+| Kalite güvenli ayrık bottleneck; RVQ seçimi Inductor dışında | FP32 | 62.235 ms | 2.1800x | Kabul; 20/20 uzun ses, kodlar birebir |
+| Native CUTLASS decoder katman 11, 22 SM120 varyantı | FP16 giriş, FP32 birikim/çıkış | 62.235 ms paketine dahil | Önceki 65.848 ms pakete göre 1.0645x | Kabul; kalite sıralamalı cuDNN plan kurtarmasıyla |
+| Decoder-9 cuDNN + WMMA füzyonu ve native final-post | FP16 dal, FP32 residual/çıkış | 60.878 ms | 2.2299x | Kabul; 20/20 kalite kapısı geçti |
+| Paketli QKV GEMM + bit-düzeyi eş RoPE | FP32 + Triton | Tek başına 61.014 ms oturumu | 2.2249x; tek başına artış <%1 | Tek başına reddedildi, yalnız birleşik adayda kabul edildi |
+| Encoder `max-autotune-no-cudagraphs` | FP32 Inductor | Birleşik 59.636 ms sonucuna dahil | Tek başına <%1 | Birebir çıktı; yalnız birleşik adayda kabul edildi |
+| Sabit-pointer encoder suffix CUDA Graph | FP32 | Birleşik 59.636 ms sonucuna dahil | Encoder bölümü hızlandı, tek başına <%1 uçtan uca | Birebir çıktı; birleşik adayda kabul edildi |
+| Sabit-pointer bottleneck CUDA Graph | FP32 | Birleşik 59.636 ms sonucuna dahil | Tek başına uçtan uca ≈1.00x | Birebir kod/decoded tensor; birleşik adayda kabul edildi |
+| Decoder prefix-2 autotune | FP32 Inductor | Birleşik 59.636 ms sonucuna dahil | Tek başına <%1 | Birebir çıktı; birleşik adayda kabul edildi |
+| Sabit-pointer decoder CUDA Graph | FP32 | Birleşik 59.636 ms sonucuna dahil | Tek başına <%1 | Birebir çıktı; birleşik adayda kabul edildi |
+| Decoder-12/final WMMA, ilk Tile=64/8 warp | FP16 noktasal, FP32 residual/final | 60.570 ms | Mevcut yola göre 1.0052x | Kalite geçti; tek başına pratik <%1 kazanç nedeniyle reddedildi |
+| Decoder-12/final WMMA, seçilen Tile=48/4 warp | FP16 noktasal, FP32 residual/final | 59.956 ms | Mevcut yola göre 1.0144x; tail 1.2295x | Kabul; tüm tile varyantlarıyla bit-düzeyi eş, 20/20 geçti |
+| Tüm yeni seçeneklerin birleşik fast-kernel adaptörü | FP32 + Triton/cuDNN/CUDA/CUTLASS | **59.636 ms** | **2.2744x; %95 GA 2.2713x–2.2755x** | Kabul; 20/20, kod farkı 0, tolerans ihlali 0 |
+| Yayımlanan bağımsız Fast-Mimi API; kullanıcıya ait output clone dahil | FP32 + Triton/cuDNN/CUDA/CUTLASS | **59.881 ms** | **2.2656x; %95 GA 2.2642x–2.2685x** | **Kabul; 20/20, dört native çekirdek yüklendi, runtime fallback oluşmadı** |
+| Güncel profil — convolutional encoder | FP32/cuDNN/Inductor/CUDA Graph | 26.572 ms | Uçtan uca sürenin %44,53’ü | En büyük kalan darboğaz; sonraki optimizasyon hedefi |
+| Güncel profil — encoder attention/MLP | FP32, paketli QKV + CUDA Graph | 8.395 ms | Uçtan uca sürenin %14,07’si | İkinci grup; düşük hassasiyet denemeleri kaliteyi geçmedi |
+| Güncel profil — kalite güvenli RVQ bottleneck | FP32 + sabit CUDA Graph | 1.250 ms | Uçtan uca sürenin %2,10’u | Küçük pay; kod sınırları nedeniyle FP32 seçim korunuyor |
+| Güncel profil — decoder attention/MLP | FP32, paketli QKV + CUDA Graph | 8.489 ms | Uçtan uca sürenin %14,23’ü | Üçüncü grup; yaklaşık attention yolları kaliteyi geçmedi |
+| Güncel profil — convolutional decoder | Karışık kalite güvenli FP16/FP32 | 14.768 ms | Uçtan uca sürenin %24,75’i | İkinci en büyük tek aşama; decoder-9/11/12 native füzyonları etkin |
+| Monolitik Inductor bottleneck; RVQ `cdist`/`argmin` dahil | FP32 | 61.851 ms | 2.1934x | Reddedildi; seed 1103 iki nearest-code sınırını geçti |
+| Kalite sıralaması olmadan en hızlı cuDNN planları | FP32 | 61.836 ms | 2.1941x | Reddedildi; 31 ses toleransı ihlali |
+| FlashAttention-4 CuTe DSL | FP16 | ≈59.62 ms | Mevcut yola göre 1.0179x | Reddedildi; 3–13 kod farkı ve çok sayıda ses ihlali |
+| FlashAttention-4 CuTe DSL | BF16 | ≈59.55 ms | Mevcut yola göre 1.0190x | Reddedildi; FP16’dan daha kötü kalite |
+| GemLite transformer | FP8 | 56.520 ms | Mevcut yola göre 1.0736x; referansa göre ≈2.400x | Reddedildi; 349–423 kod farkı ve ≈2,2 milyon ihlal |
+| HQQ + GemLite transformer | INT4 ağırlık | ≈56.35 ms | Mevcut yola göre 1.0768x; referansa göre ≈2.408x | Reddedildi; 1.363–1.729 kod farkı ve ≈2,35 milyon ihlal |
+| TileLang tüm attention/MLP transformer GEMM’leri | FP32 giriş, TF32 donanım yolu | 55.910 ms | Mevcut yola göre 1.0861x; referansa göre ≈2.427x | Reddedildi; 70–95 kod farkı ve 1,12–1,33 milyon ihlal |
+| cuDNN attention, iki attention stack | FP16 | 58.624 ms | 2.3141x | Reddedildi; kod ve dalga kalitesi başarısız |
+| cuDNN attention, iki attention stack | BF16 | 58.653 ms | 2.3130x | Reddedildi; kod ve dalga kalitesi başarısız |
+| Düzeltilmiş birikimli cuDNN attention | FP32 | 59.452 ms | 2.2820x | Reddedildi; kod/ses ihlalleri kaldı |
+| Yalnız decoder cuDNN attention | FP32 | 60.427 ms | 2.2451x | Reddedildi; yüzlerce ses ihlali |
+| Global TF32 attention/MLP GEMM | TF32 | 57.435 ms | 2.3621x | Reddedildi; 15–30 kod ve 358 bin–434 bin ses ihlali |
+| Yalnız decoder TF32 attention/MLP GEMM | TF32 | 59.648 ms | 2.2745x | Reddedildi; kodlar eş fakat 10 bin–17 bin ses ihlali |
+| Seçici TF32 QKV/output/FC1/FC2 grupları | TF32 | Kalite nedeniyle geçerli uçtan uca sonuç yok | Artımlı 1.0023x–1.0273x | Reddedildi; her grup dalga toleransını aştı |
+| CuTe DSL attention katman 7, altı GEMM | FP16 | 61.490 ms | 2.2063x; artımlı 1.0062x | Reddedildi; 13.187 ihlal ve <%1 kazanç |
+| CuTe DSL attention katman 7, altı GEMM | BF16 | 61.492 ms | 2.2062x; artımlı 1.0065x | Reddedildi; 335.855 ihlal |
+| Üç terimli telafili CuTe DSL | FP16 + FP32 telafi | 62.033 ms | 2.1871x; artımlı 0.9974x | Reddedildi; daha yavaş ve 1.974 ihlal |
+| Sekiz decoder transformer katmanını `torch.compile` | FP32 | ≈59.82 ms | Mevcut yola göre 1.0145x | Reddedildi; 421–641 ses ihlali |
+| Seçici compiled encoder | FP32 | ≈59.82 ms | Mevcut yola göre 1.0144x | Reddedildi; kod ve ses kapısı başarısız |
+| Tam forward CUDA Graph | FP32 | 60.803 ms | 60.773 ms mevcut yola göre 0.9995x | Reddedildi; birebir fakat daha yavaş |
+| Decoder residual blok 6, iki convolution | FP16 | 60.875 ms | 2.2286x | Reddedildi; ses ihlali |
+| Decoder residual blok 6, ilk convolution | FP16 | 61.425 ms | 2.2087x | Reddedildi; ses ihlali |
+| Decoder residual blok 6, son convolution | FP16 | 61.950 ms | 2.1900x; artımlı 1.00015x | Tek başına <%1 olduğu için reddedildi |
+| Decoder residual blok 6, ilk convolution | BF16 | 61.490 ms | 2.2063x | Reddedildi; 189.135–338.842 ihlal |
+| FP16 kanal kurtarma taraması | Karışık FP16/FP32 | Geçerli uçtan uca sonuç yok | Blok bileşeni ≈2.0x | Reddedildi; 128 kanalın en az 112’si FP32 kalınca kazanç silindi |
+| QKV füzyonu + Triton scaled residual | FP32 | 62.828 ms | 2.1592x; artımlı 0.9948x | Reddedildi; daha yavaş |
+| Scaled-residual özel Triton kernel | FP32 | Geçerli uçtan uca kazanç yok | PyTorch 0.0209 ms, Triton ≈0.0309 ms | Reddedildi; bileşen daha yavaş |
+| RVQ paketli projection | FP32 | ≈60.7 ms | Encode 1.021x; uçtan uca 0.997x–1.000x | Reddedildi; birebir fakat pratik kazanç yok |
+| Semantic/acoustic ilk `cdist` batching | FP32 | ≈60.7 ms | Bottleneck 1.1615x; uçtan uca 0.997x–1.000x | Reddedildi; uçtan uca ilerleme yok |
+| cuDNN deconv exact-plan taraması | FP32 | Mevcut yol ile aynı | Deconv-8 plan 1/9 ≈1.877–1.878 ms | Reddedildi; exact plan kazanç sağlamadı |
+| cuDNN deconv hızlı yaklaşık planlar | FP32 | Kalite nedeniyle geçerli değil | Daha hızlı deconv-2/5 | Reddedildi; 1–31 ses ihlali |
+| Encoder NHWC/channels-last zinciri | FP32 | 1.388,750 ms | 0.0977x | Reddedildi; daha yavaş ve yanlış |
+| Özel Triton encoder, decoder, attention, RoPE, RVQ ve normlar | FP32 | 555.001 ms | 0.2444x | Reddedildi; 16 kod ve 492.355 ses ihlali |
+| Encoder suffix/stage-4 yaklaşık füzyon | FP32 | Kalite nedeniyle geçerli değil | Encoder 26.631→22.122 ms, 1.204x | Reddedildi; 22 kod farkı; exact kurtarma yalnız 1.036x encoder kazancı |
+| Encoder stage-7 füzyon | FP32 | Kalite nedeniyle geçerli değil | Stage 4.731→4.576 ms | Reddedildi; yedi kod farkı ve encoder düzeyinde kazanç yok |
+| Encoder stage-10 füzyon | FP32 | Kalite nedeniyle geçerli değil | Stage 2.488→2.420 ms | Reddedildi; altı kod farkı ve encoder düzeyinde kazanç yok |
+| Exact segmented encoder kurtarma | FP32 | Mevcut yoldan daha yavaş | Yaklaşık hızlı yolun doğruluğunu geri getirdi | Reddedildi; kurtarma maliyeti kazancı sildi |
+| Alternatif yerel-attention geometrileri (32/256–250/250) | FP32 | Kalite nedeniyle geçerli değil | Güvenilir kazanç yok | Reddedildi; seed 1103 başarısız, çoğu varyant daha yavaş |
+| TileLang Q projection | FP32 | Bileşen doğruluğu başarısız | 0.0473 ms; bileşen 1.574x | Reddedildi; maksimum hata 0.02073 |
+| TileLang FC1 | FP32 | Bileşen doğruluğu başarısız | 0.1399 ms; bileşen 1.750x | Reddedildi; maksimum hata 0.01163 |
+| ModelOpt encoder | FP8 | Bileşen doğruluğu başarısız | 81.796 ms; compiled FP32’ye göre 0.375x | Reddedildi; daha yavaş ve 3.015 kod farkı |
+| HQQ + GemLite | INT8 ağırlık | Bileşen doğruluğu başarısız | 0.2214 ms; bileşen 0.919x | Reddedildi; daha yavaş, maksimum hata 0.1867 |
+| HQQ + GemLite | INT4 ağırlık | Bileşen doğruluğu başarısız | 0.2370 ms; bileşen 0.859x | Reddedildi; daha yavaş, maksimum hata 2.016 |
+| TensorRT encoder en iyi yapılandırma | FP32 birikim | Kod kapısı başarısız | Encoder 20.901 ms; 1.467x | Reddedildi; tüm seed’lerde kod farkı |
+| TensorRT decoder en iyi yapılandırma | FP32 | Bileşen kapısı başarısız | Decoder 154.457 ms; 0.111x | Reddedildi; yaklaşık 9x daha yavaş ve kalite başarısız |
+| TF32 ve 3xTF32 GEMM varyantları | Karışık | Bileşen doğruluğu başarısız | GEMM’ler daha hızlı | Reddedildi; kod farkları |
+| Segmented cuDNN attention | FP32 | Bileşen kapısı başarısız | 0.270 ms; bileşen 0.937x | Reddedildi; aynı hatayla daha yavaş |
+| cuDNN multi-MMA residual-branch graph | FP32 | Engine üretilemedi | Fixed-pointer fallback decoder 17.2471→17.2045 ms, 1.0025x | SM120 cuDNN backend güncellemesine ertelendi |
+| FP32 giriş + FP16/BF16 ağırlık cuDNN graph | Karışık | Çalıştırılabilir engine yok | — | SM120 cuDNN graph desteğine ertelendi |
+| ModelOpt/TensorRT-LLM FP8 export | FP8 | Export başarısız | — | CUDA 12 uyumlu hedefe ertelendi; eager FP8 kaliteyi zaten geçemedi |
+| Nsight Compute donanım sayaçları | SM120 | `ERR_NVGPUCTRPERM` | — | Yönetici izni olan profil hedefine ertelendi |
 
-The current accepted path keeps all 79,308,609 parameters and all eight requested
-codebooks. Long-form output codes are exact. Across 20 frozen 100-second seeds
-there were zero audio-tolerance violations; the worst tolerance ratio was
-`0.886597`, with maximum absolute error `0.000197306`. It is intentionally not described as bitwise waveform equality,
-because quality-safe mixed execution can differ within the frozen
-`atol=2e-4, rtol=1e-4` contract.
+Kabul edilen yol bütün 79.308.609 parametreyi ve sekiz codebook’u korur.
+20 dondurulmuş 100 saniyelik girdide kod farkı ve ses toleransı ihlali sıfırdır;
+en kötü tolerans oranı `0.887200`, maksimum mutlak hata `0.000197440` olmuştur.
+Dalga çıktısı bit-düzeyi eş olarak değil, dondurulmuş `atol=2e-4,
+rtol=1e-4` sözleşmesi içinde kalite eşdeğeri olarak tanımlanır.
 
 ## Install
 

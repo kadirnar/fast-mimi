@@ -25,6 +25,13 @@ from triton.language.extra import libdevice
 
 from ._functional_runtime import PureTorchMimi
 from ._native_cutlass import CutlassBiasDgrad, load_cutlass_bias_dgrad
+from ._native_decoder9_fused import FusedDecoder9Wmma, load_fused_decoder9_wmma
+from ._native_decoder12_final import (
+    Decoder12FinalWmma,
+    load_decoder12_final_wmma,
+)
+from ._native_final_post import NativeFinalPost, load_native_final_post
+from ._packed_qkv import PackedQkvTransformer
 
 
 @triton.jit
@@ -267,6 +274,7 @@ class _CudnnHalfInputConv:
         *,
         input_dtype: torch.dtype = torch.float16,
         weight_dtype: torch.dtype = torch.float16,
+        output_elu_half: bool = False,
     ) -> None:
         if cudnn is None:
             raise RuntimeError("cuDNN frontend is unavailable")
@@ -282,10 +290,11 @@ class _CudnnHalfInputConv:
             memory_format=torch.channels_last
         )
         self.bias = bias.reshape(1, -1, 1, 1)
+        output_dtype = torch.float16 if output_elu_half else torch.float32
         self.output = torch.empty(
             (example.shape[0], self.weight.shape[0], 1, example.shape[-1]),
             device=example.device,
-            dtype=torch.float32,
+            dtype=output_dtype,
         ).contiguous(memory_format=torch.channels_last)
 
         graph = cudnn.pygraph(
@@ -328,7 +337,17 @@ class _CudnnHalfInputConv:
         )
         result.set_dim(dimensions).set_stride(stride).set_data_type(
             cudnn.data_type.FLOAT
-        ).set_output(True)
+        )
+        if output_elu_half:
+            result = graph.elu(
+                input=result,
+                name="output_elu",
+                compute_data_type=cudnn.data_type.FLOAT,
+            )
+            result.set_dim(dimensions).set_stride(stride).set_data_type(
+                cudnn.data_type.HALF
+            )
+        result.set_output(True)
         self.output_tensor = result
 
         graph.validate()
@@ -400,6 +419,107 @@ class _CudnnHalfInputConv:
         return self._execute(values)
 
 
+class _FusedDecoder9:
+    """cuDNN half branch feeding an SM120 WMMA residual epilogue."""
+
+    def __init__(
+        self,
+        native: FusedDecoder9Wmma,
+        residual: torch.Tensor,
+        branch_weight: torch.Tensor,
+        branch_bias: torch.Tensor,
+        pointwise_weight: torch.Tensor,
+        pointwise_bias: torch.Tensor,
+    ) -> None:
+        if residual.shape[-1] != 600_000:
+            raise RuntimeError("decoder-9 native path is validated for 100 seconds")
+        self.native = native
+        self.branch = _CudnnHalfInputConv(
+            residual,
+            branch_weight,
+            branch_bias,
+            output_elu_half=True,
+        )
+        self.weight = pointwise_weight.squeeze(-1).squeeze(-1).to(
+            torch.float16
+        ).contiguous()
+        self.bias = pointwise_bias.contiguous()
+        self.output_matrix = torch.empty(
+            (residual.shape[-1], residual.shape[1]),
+            device=residual.device,
+            dtype=torch.float16,
+        )
+        self.output = self.output_matrix.view(
+            1, 1, residual.shape[-1], residual.shape[1]
+        ).permute(0, 3, 1, 2)
+
+    def __call__(self, residual: torch.Tensor) -> torch.Tensor:
+        branch = self.branch(residual)
+        rows = residual.shape[-1]
+        branch_matrix = branch.permute(0, 2, 3, 1).reshape(rows, 64)
+        residual_matrix = residual.permute(0, 2, 3, 1).reshape(rows, 128)
+        self.native(
+            branch_matrix,
+            self.weight,
+            residual_matrix,
+            self.bias,
+            self.output_matrix,
+        )
+        return self.output
+
+
+class _FusedDecoder12Final:
+    """Fuse the validated 100-second decoder-12 branch and final convolution."""
+
+    def __init__(
+        self,
+        native: Decoder12FinalWmma,
+        residual: torch.Tensor,
+        branch_weight: torch.Tensor,
+        branch_bias: torch.Tensor,
+        pointwise_weight: torch.Tensor,
+        pointwise_bias: torch.Tensor,
+        final_weight: torch.Tensor,
+        final_bias: torch.Tensor,
+    ) -> None:
+        if residual.shape[-1] != 2_400_000:
+            raise RuntimeError("decoder-12 fusion is validated for 100 seconds")
+        self.native = native
+        self.branch = _CudnnHalfInputConv(
+            residual,
+            branch_weight,
+            branch_bias,
+            output_elu_half=True,
+        )
+        self.pointwise_weight = pointwise_weight.squeeze(-1).squeeze(-1).to(
+            torch.float16
+        ).contiguous()
+        self.pointwise_bias = pointwise_bias.contiguous()
+        self.final_weight = final_weight.contiguous()
+        self.final_bias = final_bias.contiguous()
+        self.output = torch.empty(
+            (1, 1, residual.shape[-1]),
+            device=residual.device,
+            dtype=torch.float32,
+        )
+
+    def __call__(self, residual: torch.Tensor) -> torch.Tensor:
+        branch = self.branch(residual)
+        length = residual.shape[-1]
+        branch_matrix = branch.permute(0, 2, 3, 1).reshape(length, 32)
+        residual_matrix = residual.permute(0, 2, 3, 1).reshape(length, 64)
+        return self.native(
+            branch_matrix,
+            self.pointwise_weight,
+            residual_matrix,
+            self.pointwise_bias,
+            self.final_weight,
+            self.final_bias,
+            self.output,
+            config=3,
+        )
+
+
 class _CutlassDecoderLayer11:
     """Fuse residual+ELU+FP16 conversion with bias-aware CUTLASS dgrad."""
 
@@ -432,6 +552,8 @@ class _CutlassDecoderLayer11:
             device=residual.device,
             dtype=torch.float32,
         ).contiguous(memory_format=torch.channels_last)
+        self.decoder9: _FusedDecoder9 | None = None
+        self.decoder12_final: _FusedDecoder12Final | None = None
         self(residual, branch)
 
     def __call__(
@@ -440,7 +562,10 @@ class _CutlassDecoderLayer11:
         branch: torch.Tensor,
     ) -> torch.Tensor:
         _triton_add_elu_half_into(residual, branch, self.input)
-        return self.native(self.input, self.weight, self.bias, self.output, 4)
+        return self.from_half(self.input)
+
+    def from_half(self, values: torch.Tensor) -> torch.Tensor:
+        return self.native(values, self.weight, self.bias, self.output, 4)
 
 
 class _CudnnDeconv:
@@ -1116,6 +1241,26 @@ class _StaticCudaGraph:
         return self.output
 
 
+class _FixedCudaGraph:
+    """Replay a fixed-pointer CUDA graph fed by an upstream static output."""
+
+    def __init__(self, function: Any) -> None:
+        capture_stream = torch.cuda.Stream()
+        capture_stream.wait_stream(torch.cuda.current_stream())
+        with torch.cuda.stream(capture_stream):
+            for _ in range(3):
+                function()
+        torch.cuda.current_stream().wait_stream(capture_stream)
+        torch.cuda.synchronize()
+        self.graph = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(self.graph):
+            self.output = function()
+
+    def __call__(self) -> Any:
+        self.graph.replay()
+        return self.output
+
+
 class OptimizedLongMimi(CompiledSeanetsMimi):
     """Long-form Mimi with exact window skipping and a mixed-precision NHWC decoder tail."""
 
@@ -1139,13 +1284,13 @@ class OptimizedLongMimi(CompiledSeanetsMimi):
             self._encoder_prefix1_graph,
             fullgraph=True,
             dynamic=False,
-            mode="default",
+            mode="max-autotune-no-cudagraphs",
         )
         self._compiled_encoder_after3 = torch.compile(
             self._encoder_after3_graph,
             fullgraph=True,
             dynamic=False,
-            mode="default",
+            mode="max-autotune-no-cudagraphs",
         )
         self._compiled_encoder_e3_bridge = torch.compile(
             self._encoder_e3_bridge_graph,
@@ -1166,6 +1311,13 @@ class OptimizedLongMimi(CompiledSeanetsMimi):
             tuple[Any, ...],
             _StaticCudaGraph | None,
         ] = {}
+        self._fixed_encoder_suffix_cache: dict[
+            tuple[Any, ...],
+            _FixedCudaGraph | None,
+        ] = {}
+        self._fixed_bottleneck_cache: dict[int, _FixedCudaGraph | None] = {}
+        self._fixed_decoder_cache: dict[int, _FixedCudaGraph | None] = {}
+        self._packed_qkv = PackedQkvTransformer(self)
         self._embed("quantizer.semantic_residual_vector_quantizer.layers.0.codebook")
         for index in range(7):
             self._embed(
@@ -1201,6 +1353,16 @@ class OptimizedLongMimi(CompiledSeanetsMimi):
             if key.removesuffix(".bias") in self.fp16_decoder_layers
         }
         self._cutlass_bias_dgrad = load_cutlass_bias_dgrad()
+        self._fused_decoder9_wmma: FusedDecoder9Wmma | None = (
+            load_fused_decoder9_wmma()
+        )
+        self._decoder12_final_wmma: Decoder12FinalWmma | None = (
+            load_decoder12_final_wmma()
+        )
+        self._native_final_post: NativeFinalPost | None = load_native_final_post()
+        self._native_final_post_outputs: dict[
+            tuple[torch.device, int], torch.Tensor
+        ] = {}
         self._compiled_nhwc_decoder = torch.compile(
             self._decoder_nhwc_graph,
             fullgraph=True,
@@ -1217,7 +1379,7 @@ class OptimizedLongMimi(CompiledSeanetsMimi):
             self._decoder_nhwc_prefix2,
             fullgraph=True,
             dynamic=False,
-            mode="default",
+            mode="max-autotune-no-cudagraphs",
         )
         self._compiled_nhwc_decoder_after2 = torch.compile(
             self._decoder_nhwc_after2,
@@ -1284,13 +1446,82 @@ class OptimizedLongMimi(CompiledSeanetsMimi):
             self._transformer_graph_cache[key] = None
             return None
         try:
+            transformer = (
+                self._packed_qkv
+                if tuple(hidden.shape) == (1, 2_500, self.hidden_size)
+                else self.transformer
+            )
             result = _StaticCudaGraph(
-                lambda values: self.transformer(values, prefix),
+                lambda values: transformer(values, prefix),
                 hidden,
             )
         except Exception:
             result = None
         self._transformer_graph_cache[key] = result
+        return result
+
+    def _make_fixed_encoder_suffix(
+        self,
+        input_values: torch.Tensor,
+        first_graph: _CudnnExactEncoderConv,
+        e3_graph: _CudnnExactEncoderConv,
+    ) -> _FixedCudaGraph | None:
+        key = (input_values.device, input_values.dtype, tuple(input_values.shape))
+        if key in self._fixed_encoder_suffix_cache:
+            return self._fixed_encoder_suffix_cache[key]
+        if tuple(input_values.shape) != (1, 1, 2_400_000):
+            self._fixed_encoder_suffix_cache[key] = None
+            return None
+
+        def suffix() -> torch.Tensor:
+            hidden = self._compiled_encoder_prefix1(first_graph.output.squeeze(2))
+            source4 = self._compiled_encoder_e3_bridge(hidden)
+            downsampled = e3_graph(source4).squeeze(2)
+            return self._compiled_encoder_after3(downsampled)
+
+        try:
+            result = _FixedCudaGraph(suffix)
+        except Exception:
+            result = None
+        self._fixed_encoder_suffix_cache[key] = result
+        return result
+
+    def _make_fixed_bottleneck(
+        self,
+        encoder_graph: _StaticCudaGraph,
+    ) -> _FixedCudaGraph | None:
+        key = id(encoder_graph)
+        if key in self._fixed_bottleneck_cache:
+            return self._fixed_bottleneck_cache[key]
+        if tuple(encoder_graph.output.shape) != (1, 2_500, self.hidden_size):
+            self._fixed_bottleneck_cache[key] = None
+            return None
+        try:
+            result = _FixedCudaGraph(
+                lambda: self._quality_safe_bottleneck(encoder_graph.output)
+            )
+        except Exception:
+            result = None
+        self._fixed_bottleneck_cache[key] = result
+        return result
+
+    def _make_fixed_decoder(
+        self,
+        decoder_graph: _StaticCudaGraph,
+    ) -> _FixedCudaGraph | None:
+        key = id(decoder_graph)
+        if key in self._fixed_decoder_cache:
+            return self._fixed_decoder_cache[key]
+        if tuple(decoder_graph.output.shape) != (1, 2_500, self.hidden_size):
+            self._fixed_decoder_cache[key] = None
+            return None
+        try:
+            result = _FixedCudaGraph(
+                lambda: self.decoder(decoder_graph.output.transpose(1, 2))
+            )
+        except Exception:
+            result = None
+        self._fixed_decoder_cache[key] = result
         return result
 
     def _encoder_suffix_graph(self, hidden: torch.Tensor) -> torch.Tensor:
@@ -1409,10 +1640,21 @@ class OptimizedLongMimi(CompiledSeanetsMimi):
             memory_format=torch.channels_last
         )
         hidden = graph(values4).squeeze(2)
+        fixed_key = (
+            input_values.device,
+            input_values.dtype,
+            tuple(input_values.shape),
+        )
+        cached_fixed = self._fixed_encoder_suffix_cache.get(fixed_key)
+        if cached_fixed is not None:
+            return cached_fixed()
         prefix = self._compiled_encoder_prefix1(hidden)
         e3_graph = self._make_encoder_e3_cudnn_graph(prefix)
         if e3_graph is None:
             return self._compiled_encoder_suffix(hidden)
+        fixed = self._make_fixed_encoder_suffix(input_values, graph, e3_graph)
+        if fixed is not None:
+            return fixed()
         source4 = self._compiled_encoder_e3_bridge(prefix)
         downsampled = e3_graph(source4).squeeze(2)
         return self._compiled_encoder_after3(downsampled)
@@ -1849,11 +2091,53 @@ class OptimizedLongMimi(CompiledSeanetsMimi):
                     )
                 except Exception:
                     cutlass11 = None
+            if (
+                cutlass11 is not None
+                and self._fused_decoder9_wmma is not None
+                and residual9.shape[-1] == 600_000
+            ):
+                try:
+                    cutlass11.decoder9 = _FusedDecoder9(
+                        self._fused_decoder9_wmma,
+                        residual9,
+                        self._decoder_weights4[
+                            "decoder.layers.9.block.1.conv.weight"
+                        ],
+                        self.state["decoder.layers.9.block.1.conv.bias"],
+                        self._decoder_weights4[
+                            "decoder.layers.9.block.3.conv.weight"
+                        ],
+                        self.state["decoder.layers.9.block.3.conv.bias"],
+                    )
+                except Exception:
+                    cutlass11.decoder9 = None
             residual12 = (
                 cutlass11(residual9, branch9)
                 if cutlass11 is not None
                 else graph11(activated11)
             )
+            if (
+                cutlass11 is not None
+                and self._decoder12_final_wmma is not None
+                and residual12.shape[-1] == 2_400_000
+            ):
+                try:
+                    cutlass11.decoder12_final = _FusedDecoder12Final(
+                        self._decoder12_final_wmma,
+                        residual12,
+                        self._decoder_weights4[
+                            "decoder.layers.12.block.1.conv.weight"
+                        ],
+                        self.state["decoder.layers.12.block.1.conv.bias"],
+                        self._decoder_weights4[
+                            "decoder.layers.12.block.3.conv.weight"
+                        ],
+                        self.state["decoder.layers.12.block.3.conv.bias"],
+                        self.state["decoder.layers.14.conv.weight"],
+                        self.state["decoder.layers.14.conv.bias"],
+                    )
+                except Exception:
+                    cutlass11.decoder12_final = None
             stage = "residual12_conv1"
             graph12b1 = _CudnnHalfInputConv(
                 residual12,
@@ -1953,15 +2237,41 @@ class OptimizedLongMimi(CompiledSeanetsMimi):
         activated5 = self._compiled_nhwc_decoder_after2(graph2(activated2))
         activated8 = self._compiled_nhwc_decoder_after5(graph5(activated5))
         residual9 = graph8(activated8)
-        branch9 = graph9b1(residual9)
-        branch9 = graph9b3(branch9)
+        if cutlass11 is not None and cutlass11.decoder9 is not None:
+            activated11 = cutlass11.decoder9(residual9)
+            residual12 = cutlass11.from_half(activated11)
+        else:
+            branch9 = graph9b1(residual9)
+            branch9 = graph9b3(branch9)
         if cutlass11 is None:
             activated11 = self._compiled_nhwc_decoder_after9(residual9, branch9)
             residual12 = graph11(activated11)
-        else:
+        elif cutlass11.decoder9 is None:
             residual12 = cutlass11(residual9, branch9)
+        if cutlass11 is not None and cutlass11.decoder12_final is not None:
+            return cutlass11.decoder12_final(residual12)
         branch12 = graph12b1(residual12)
         branch12 = graph12b3(branch12)
+        if self._native_final_post is not None:
+            output_key = (residual12.device, residual12.shape[-1])
+            output = self._native_final_post_outputs.get(output_key)
+            if output is None:
+                output = torch.empty(
+                    (1, 1, residual12.shape[-1]),
+                    device=residual12.device,
+                    dtype=torch.float32,
+                )
+                self._native_final_post_outputs[output_key] = output
+            return self._native_final_post(
+                residual12,
+                branch12,
+                self.state["decoder.layers.14.conv.weight"],
+                self.state["decoder.layers.14.conv.bias"],
+                output,
+                reduction_order=14,
+                exp_mode=2,
+                config=0,
+            )
         if graph_post is None:
             return self._compiled_nhwc_decoder_post12(residual12, branch12)
         return graph_post(residual12, branch12)
@@ -1983,7 +2293,16 @@ class OptimizedLongMimi(CompiledSeanetsMimi):
             else self.transformer(embeddings, "encoder_transformer")
         )
         if num_quantizers == 8:
-            codes, decoded = self._quality_safe_bottleneck(embeddings)
+            fixed_bottleneck = (
+                self._make_fixed_bottleneck(encoder_graph)
+                if encoder_graph is not None
+                else None
+            )
+            codes, decoded = (
+                fixed_bottleneck()
+                if fixed_bottleneck is not None
+                else self._quality_safe_bottleneck(embeddings)
+            )
         else:
             compressed = self.downsample(embeddings.transpose(1, 2))
             codes = self.quantizer_encode(compressed, num_quantizers)
@@ -1997,7 +2316,16 @@ class OptimizedLongMimi(CompiledSeanetsMimi):
             if decoder_graph is not None
             else self.transformer(decoded, "decoder_transformer")
         )
-        audio_values = self.decoder(decoded.transpose(1, 2))
+        fixed_decoder = (
+            self._make_fixed_decoder(decoder_graph)
+            if decoder_graph is not None and num_quantizers == 8
+            else None
+        )
+        audio_values = (
+            fixed_decoder()
+            if fixed_decoder is not None
+            else self.decoder(decoded.transpose(1, 2))
+        )
         if padding_mask.shape[-1] < audio_values.shape[-1]:
             audio_values = audio_values[..., : padding_mask.shape[-1]]
         return SimpleNamespace(
