@@ -50,11 +50,12 @@ kodunu içerir; üretim ağacında `transformers` importu yoktur.
 | Decoder-12/final WMMA, seçilen Tile=48/4 warp | FP16 noktasal, FP32 residual/final | 59.956 ms | Mevcut yola göre 1.0144x; tail 1.2295x | Kabul; tüm tile varyantlarıyla bit-düzeyi eş, 20/20 geçti |
 | Tüm yeni seçeneklerin birleşik fast-kernel adaptörü | FP32 + Triton/cuDNN/CUDA/CUTLASS | **59.636 ms** | **2.2744x; %95 GA 2.2713x–2.2755x** | Kabul; 20/20, kod farkı 0, tolerans ihlali 0 |
 | Yayımlanan bağımsız Fast-Mimi API; kullanıcıya ait output clone dahil | FP32 + Triton/cuDNN/CUDA/CUTLASS | **59.881 ms** | **2.2656x; %95 GA 2.2642x–2.2685x** | **Kabul; 20/20, dört native çekirdek yüklendi, runtime fallback oluşmadı** |
-| Güncel profil — convolutional encoder | FP32/cuDNN/Inductor/CUDA Graph | 26.572 ms | Uçtan uca sürenin %44,53’ü | En büyük kalan darboğaz; sonraki optimizasyon hedefi |
-| Güncel profil — encoder attention/MLP | FP32, paketli QKV + CUDA Graph | 8.395 ms | Uçtan uca sürenin %14,07’si | İkinci grup; düşük hassasiyet denemeleri kaliteyi geçmedi |
-| Güncel profil — kalite güvenli RVQ bottleneck | FP32 + sabit CUDA Graph | 1.250 ms | Uçtan uca sürenin %2,10’u | Küçük pay; kod sınırları nedeniyle FP32 seçim korunuyor |
-| Güncel profil — decoder attention/MLP | FP32, paketli QKV + CUDA Graph | 8.489 ms | Uçtan uca sürenin %14,23’ü | Üçüncü grup; yaklaşık attention yolları kaliteyi geçmedi |
-| Güncel profil — convolutional decoder | Karışık kalite güvenli FP16/FP32 | 14.768 ms | Uçtan uca sürenin %24,75’i | İkinci en büyük tek aşama; decoder-9/11/12 native füzyonları etkin |
+| Güncel dondurulmuş 100 sn kapısı; fast-kernel adaptörü | FP32 + Triton/cuDNN/CUDA/CUTLASS | **133.561 → 58.916 ms** | **2.2669x; %95 GA 2.2638x–2.2852x** | **Kabul; 20/20, kod farkı 0, tolerans ihlali 0, en kötü oran 0.887200** |
+| Güncel profil — convolutional encoder | FP32/cuDNN/Inductor/CUDA Graph | 25.947 ms | Uçtan uca sürenin %44,00’ü | En büyük kalan darboğaz; sonraki optimizasyon hedefi |
+| Güncel profil — encoder attention/MLP | FP32, paketli QKV + CUDA Graph | 8.397 ms | Uçtan uca sürenin %14,24’ü | İkinci grup; düşük hassasiyet denemeleri kaliteyi geçmedi |
+| Güncel profil — kalite güvenli RVQ bottleneck | FP32 + sabit CUDA Graph | 1.248 ms | Uçtan uca sürenin %2,12’si | Küçük pay; kod sınırları nedeniyle FP32 seçim korunuyor |
+| Güncel profil — decoder attention/MLP | FP32, paketli QKV + CUDA Graph | 8.517 ms | Uçtan uca sürenin %14,44’ü | Üçüncü grup; yaklaşık attention yolları kaliteyi geçmedi |
+| Güncel profil — convolutional decoder | Karışık kalite güvenli FP16/FP32 | 14.528 ms | Uçtan uca sürenin %24,64’ü | İkinci en büyük tek aşama; decoder-9/11/12 native füzyonları etkin |
 | Monolitik Inductor bottleneck; RVQ `cdist`/`argmin` dahil | FP32 | 61.851 ms | 2.1934x | Reddedildi; seed 1103 iki nearest-code sınırını geçti |
 | Kalite sıralaması olmadan en hızlı cuDNN planları | FP32 | 61.836 ms | 2.1941x | Reddedildi; 31 ses toleransı ihlali |
 | FlashAttention-4 CuTe DSL | FP16 | ≈59.62 ms | Mevcut yola göre 1.0179x | Reddedildi; 3–13 kod farkı ve çok sayıda ses ihlali |
@@ -101,6 +102,19 @@ kodunu içerir; üretim ağacında `transformers` importu yoktur.
 | TensorRT encoder en iyi yapılandırma | FP32 birikim | Kod kapısı başarısız | Encoder 20.901 ms; 1.467x | Reddedildi; tüm seed’lerde kod farkı |
 | TensorRT decoder en iyi yapılandırma | FP32 | Bileşen kapısı başarısız | Decoder 154.457 ms; 0.111x | Reddedildi; yaklaşık 9x daha yavaş ve kalite başarısız |
 | TF32 ve 3xTF32 GEMM varyantları | Karışık | Bileşen doğruluğu başarısız | GEMM’ler daha hızlı | Reddedildi; kod farkları |
+| Native cuBLAS BF16x9 telafili GEMM | BF16 parçalar, FP32 toplam | ≈mevcut yol | ≈0.99x | Ertelendi; SM120’de yerleşik yol FP32’ye düştü, Tensor Core hızlanması oluşmadı |
+| BF16x3 + decoder-12 Tile=64/5, düzeltilmiş clone kapısı | BF16x3 + FP32 residual | 58.605 → 58.241 ms | 1.0063x; %95 GA 1.0018x–1.0151x | Reddedildi; seed başına 963–1.465 ses ihlali |
+| Seçici BF16x3 QKV/FC1 taraması, sekiz decoder katmanı | BF16x3 + FP32 | Geçerli uçtan uca sonuç yok | 24 seçenek tarandı | Reddedildi; her tekil katman/operatör 342–1.204 ses ihlali üretti |
+| Exact NHWC encoder stage-4/down-6 zinciri | FP32 cuDNN | 8.414 → 792.618 ms (aşama) | 0.0106x | Reddedildi; bit-düzeyi eş fakat seçilen exact plan çok yavaş |
+| Exact NHWC residual-4 hibriti | FP32 cuDNN/Inductor | 8.412 → 9.174 ms (aşama) | 0.9170x | Reddedildi; bit-düzeyi eş fakat layout dönüşü kazancı sildi |
+| CUTLASS encoder down-6, altı SM120 implicit-conv ayarı | FP32 | 4.198 → 4.754 ms (bileşen) | 0.8832x | Reddedildi; daha yavaş ve maksimum fark 3.81e-5 |
+| Native cuBLAS FP32 transformer GEMM taraması | FP32 | Bileşen bazında | QKV 1.0196x; O 1.0476x; FC1 1.0083x; FC2 1.0152x | Bit-düzeyi eş; tekil/Amdahl kazancı pratik eşiğin altında |
+| cuBLASLt exact transformer algoritmaları | FP32 | 58.925 → 58.810 ms | 1.0020x; %95 GA 0.9939x–1.0071x | Reddedildi; kalite tam geçti fakat uçtan uca kazancı istatistiksel ve pratik değil |
+| cuBLASLt hızlı FC1 algoritması | FP32, farklı reduction planı | 58.925 → ≈58.54 ms | 1.0066x; %95 GA 1.0030x–1.0144x | Reddedildi; 5 kod farkı ve bir seed’de 178.915 ses ihlali |
+| cuDNN residual-6 füzyonu | FP32 graph | 58.955 → 58.655 ms | 1.0051x; %95 GA 0.9968x–1.0108x; blok 1.175x | Reddedildi; 3 ses ihlali ve uçtan uca GA 1x’i kapsıyor |
+| cuDNN residual-6 exact-numerics plan filtresi | FP32 SIMT | Çalıştırılabilir engine yok | — | SM120 cuDNN backend’inde uygun exact fused engine için ertelendi |
+| cuBLASLt residual-6 exact epilogue | FP32 | 2.114 → 2.376 ms (blok) | 0.8897x | Reddedildi; daha yavaş ve seçilen matmul planı kaliteyi geçmedi |
+| CUTLASS SIMT encoder pointwise zinciri | FP32 | 8.023 → 6.432 ms (prefix) | 1.2473x | Reddedildi; hızlı fakat final encoder’da 13 kod farkı oluşturdu |
 | Segmented cuDNN attention | FP32 | Bileşen kapısı başarısız | 0.270 ms; bileşen 0.937x | Reddedildi; aynı hatayla daha yavaş |
 | cuDNN multi-MMA residual-branch graph | FP32 | Engine üretilemedi | Fixed-pointer fallback decoder 17.2471→17.2045 ms, 1.0025x | SM120 cuDNN backend güncellemesine ertelendi |
 | FP32 giriş + FP16/BF16 ağırlık cuDNN graph | Karışık | Çalıştırılabilir engine yok | — | SM120 cuDNN graph desteğine ertelendi |
