@@ -2,24 +2,9 @@
 
 # Fast-Mimi
 
-Fast-Mimi is an independent PyTorch inference runtime for the frozen
-[Kyutai Mimi](https://huggingface.co/kyutai/mimi) checkpoint. Production code
-under `src/fast_mimi` has no Transformers import or dependency. The checkpoint
-is loaded directly with `huggingface-hub` and `safetensors`.
-
-The portable path uses pure PyTorch. The validated RTX 5070 Ti/SM120 path
-combines Inductor, CUDA Graphs, Triton, the cuDNN frontend, and native
-CUDA/CUTLASS kernels. Unsupported devices, shapes, and toolchains fail closed
-to the portable implementation. Rejected experimental implementations are not
-included in the production package.
-
-The model identity is locked in code:
-
-- Model: `kyutai/mimi`
-- Revision: `89091b3e466eb6a9d11e537bf26b144f194978f7`
-- Weights SHA-256: `bac7e85083dcded655d24eaadde7e6eea34c0da1b35fa2d284e641bd2b942a5e`
-- Parameter fingerprint: `3feaa6168b191ffdebfd8f695b963f72c8d847a3966f7cc3283af6b38d437bb4`
-- Parameter count: `79,308,609`
+Fast-Mimi is a Transformers-free PyTorch inference runtime for
+[Kyutai Mimi](https://huggingface.co/kyutai/mimi), optimized for RTX 5070 Ti
+(SM120) with CUDA Graphs, Triton, cuDNN, CUDA, and CUTLASS.
 
 ## 100-second end-to-end results
 
