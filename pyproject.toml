@@ -19,6 +19,8 @@ dependencies = [
 [project.optional-dependencies]
 audio = ["numpy>=1.26", "scipy>=1.11", "soundfile>=0.12"]
 optimized = [
+  "nvidia-cuda-cccl>=13.3.3.4.1,<14; platform_system == 'Linux'",
+  "nvidia-cuda-nvcc>=13.3.73,<14; platform_system == 'Linux'",
   "nvidia-cudnn-frontend>=1.27.0; platform_system == 'Linux'",
   "tilelang>=0.1.13; platform_system == 'Linux'",
   "triton>=3.7.1; platform_system == 'Linux'",

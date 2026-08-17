@@ -1171,8 +1171,14 @@ class OptimizedLongMimi(CompiledSeanetsMimi):
             self._embed(
                 f"quantizer.acoustic_residual_vector_quantizer.layers.{index}.codebook"
             )
-        self._compiled_bottleneck = torch.compile(
-            self._bottleneck_graph,
+        self._compiled_bottleneck_downsample = torch.compile(
+            self._bottleneck_downsample_graph,
+            fullgraph=True,
+            dynamic=False,
+            mode="default",
+        )
+        self._compiled_bottleneck_reconstruct = torch.compile(
+            self._bottleneck_reconstruct_graph,
             fullgraph=True,
             dynamic=False,
             mode="default",
@@ -1242,14 +1248,28 @@ class OptimizedLongMimi(CompiledSeanetsMimi):
             tuple[Any, ...] | None,
         ] = {}
 
-    def _bottleneck_graph(
+    def _bottleneck_downsample_graph(
+        self,
+        embeddings: torch.Tensor,
+    ) -> torch.Tensor:
+        return self.downsample(embeddings.transpose(1, 2))
+
+    def _bottleneck_reconstruct_graph(
+        self,
+        codes: torch.Tensor,
+    ) -> torch.Tensor:
+        reconstructed = self.quantizer_decode(codes)
+        return self.upsample(reconstructed).transpose(1, 2)
+
+    def _quality_safe_bottleneck(
         self,
         embeddings: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        compressed = self.downsample(embeddings.transpose(1, 2))
+        compressed = self._compiled_bottleneck_downsample(embeddings)
+        # Keep cdist/argmin outside Inductor. Its alternative reduction order
+        # crossed a nearest-code boundary on the frozen 100-second seed 1103.
         codes = self.quantizer_encode(compressed, 8)
-        reconstructed = self.quantizer_decode(codes)
-        decoded = self.upsample(reconstructed).transpose(1, 2)
+        decoded = self._compiled_bottleneck_reconstruct(codes)
         return codes, decoded
 
     def _make_transformer_cuda_graph(
@@ -1963,7 +1983,7 @@ class OptimizedLongMimi(CompiledSeanetsMimi):
             else self.transformer(embeddings, "encoder_transformer")
         )
         if num_quantizers == 8:
-            codes, decoded = self._compiled_bottleneck(embeddings)
+            codes, decoded = self._quality_safe_bottleneck(embeddings)
         else:
             compressed = self.downsample(embeddings.transpose(1, 2))
             codes = self.quantizer_encode(compressed, num_quantizers)

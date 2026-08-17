@@ -64,6 +64,7 @@ def _build_library() -> Path:
     identity.update(version.encode())
     identity.update(str(include).encode())
     identity.update(repr(capability).encode())
+    identity.update(b"cccl-mixed-minor-toolkit-compat-v1")
     digest = identity.hexdigest()[:20]
     cache = Path(tempfile.gettempdir()) / "fast-mimi-native"
     cache.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -81,6 +82,7 @@ def _build_library() -> Path:
             "-std=c++17",
             "-shared",
             "-Xcompiler=-fPIC",
+            "-DCCCL_DISABLE_CTK_COMPATIBILITY_CHECK",
             "-gencode=arch=compute_120,code=sm_120",
             f"-I{include}",
             str(_SOURCE),
