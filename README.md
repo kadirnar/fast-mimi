@@ -28,17 +28,17 @@ and exactly 2,400,000 samples. The first call, including compilation and
 autotuning, is excluded. Only accepted optimizations present in production code
 are listed.
 
-| Accepted optimization | Speedup |
-|---|---:|
-| Independent pure PyTorch reference | 1.0000x |
-| Inductor + CUDA Graph + Triton/cuDNN base package | 2.0603x |
-| Quality-safe RVQ + cuDNN plan recovery | 2.1800x |
-| Native CUTLASS decoder-11 | 2.1800x |
-| cuDNN + WMMA decoder-9 and native final-post | 2.2299x |
-| Selected WMMA decoder-12/final | 2.2628x |
-| Packed QKV, bit-equivalent RoPE, fixed-pointer graphs, and autotuning | 2.2744x |
-| Published independent Fast-Mimi API | 2.2656x |
-| Latest frozen paired benchmark | **2.2669x** |
+| Accepted optimization | Precision / backend | Speedup |
+|---|---|---:|
+| Independent pure PyTorch reference | FP32 / PyTorch | 1.0000x |
+| Inductor + CUDA Graph + Triton/cuDNN base package | FP32 / Inductor, CUDA Graph, Triton, cuDNN | 2.0603x |
+| Quality-safe RVQ + cuDNN plan recovery | FP32 / PyTorch, cuDNN | 2.1800x |
+| Native CUTLASS decoder-11 | FP16 input, FP32 accumulation/output / CUTLASS | 2.1800x |
+| cuDNN + WMMA decoder-9 and native final-post | FP16 branch, FP32 residual/output / cuDNN, CUDA WMMA | 2.2299x |
+| Selected WMMA decoder-12/final | FP16 pointwise, FP32 residual/final / CUDA WMMA | 2.2628x |
+| Packed QKV, bit-equivalent RoPE, fixed-pointer graphs, and autotuning | FP32 / Triton, cuDNN, CUDA, CUTLASS | 2.2744x |
+| Published independent Fast-Mimi API | FP32 / Triton, cuDNN, CUDA, CUTLASS | 2.2656x |
+| Latest frozen paired benchmark | FP32 / Triton, cuDNN, CUDA, CUTLASS | **2.2669x** |
 
 ## Installation
 
