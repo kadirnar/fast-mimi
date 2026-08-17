@@ -2,18 +2,18 @@
 
 # Fast-Mimi
 
-Fast-Mimi, dondurulmuş [Kyutai Mimi](https://huggingface.co/kyutai/mimi)
-checkpoint'i için sıfırdan yazılmış bağımsız bir PyTorch inference runtime'ıdır.
-`src/fast_mimi` altında Transformers importu veya bağımlılığı yoktur; checkpoint
-doğrudan `huggingface-hub` ve `safetensors` ile yüklenir.
+Fast-Mimi is an independent PyTorch inference runtime for the frozen
+[Kyutai Mimi](https://huggingface.co/kyutai/mimi) checkpoint. Production code
+under `src/fast_mimi` has no Transformers import or dependency. The checkpoint
+is loaded directly with `huggingface-hub` and `safetensors`.
 
-Taşınabilir yol saf PyTorch kullanır. RTX 5070 Ti/SM120 için doğrulanmış yol;
-Inductor, CUDA Graph, Triton, cuDNN frontend ve native CUDA/CUTLASS çekirdeklerini
-birleştirir. Desteklenmeyen cihaz, şekil veya araç zincirinde güvenli biçimde saf
-PyTorch yoluna döner. Reddedilmiş deneysel implementasyonlar üretim paketine dahil
-edilmemiştir.
+The portable path uses pure PyTorch. The validated RTX 5070 Ti/SM120 path
+combines Inductor, CUDA Graphs, Triton, the cuDNN frontend, and native
+CUDA/CUTLASS kernels. Unsupported devices, shapes, and toolchains fail closed
+to the portable implementation. Rejected experimental implementations are not
+included in the production package.
 
-Model kimliği kod içinde şu değerlere kilitlidir:
+The model identity is locked in code:
 
 - Model: `kyutai/mimi`
 - Revision: `89091b3e466eb6a9d11e537bf26b144f194978f7`
@@ -21,43 +21,44 @@ Model kimliği kod içinde şu değerlere kilitlidir:
 - Parameter fingerprint: `3feaa6168b191ffdebfd8f695b963f72c8d847a3966f7cc3283af6b38d437bb4`
 - Parameter count: `79,308,609`
 
-## 100 saniyelik uçtan uca sonuçlar
+## 100-second end-to-end results
 
-RTX 5070 Ti (SM120), 24 kHz mono, sekiz codebook ve tam 2.400.000 örnek
-ölçülmüştür. Derleme/autotune içeren ilk çağrı ölçüm dışıdır. Yalnızca kabul
-edilmiş ve üretim kodunda bulunan optimizasyonlar gösterilir.
+Measurements use an RTX 5070 Ti (SM120), 24 kHz mono audio, eight codebooks,
+and exactly 2,400,000 samples. The first call, including compilation and
+autotuning, is excluded. Only accepted optimizations present in production code
+are listed.
 
-| Kabul edilen yol | Hassasiyet / backend | 100 sn uçtan uca medyan | Hızlanma | Doğruluk sonucu |
-|---|---|---:|---:|---|
-| Bağımsız saf PyTorch referansı | FP32 | 135.667 ms | 1.0000x | Dondurulmuş mimari ve checkpoint |
-| Inductor + CUDA Graph + Triton/cuDNN temel paketi | FP32 | 65.848 ms | 2.0603x | Geçti |
-| Kalite güvenli RVQ + cuDNN plan kurtarması | FP32 | 62.235 ms | 2.1800x | 20/20, kodlar birebir |
-| Native CUTLASS decoder-11 | FP16 giriş, FP32 birikim/çıkış | 62.235 ms paketine dahil | Önceki pakete göre 1.0645x | Geçti |
-| cuDNN + WMMA decoder-9 ve native final-post | FP16 dal, FP32 residual/çıkış | 60.878 ms | 2.2299x | 20/20 geçti |
-| Seçilen WMMA decoder-12/final | FP16 noktasal, FP32 residual/final | 59.956 ms | 2.2628x | 20/20 geçti |
-| Paketli QKV, bit-eş RoPE, encoder/bottleneck/decoder sabit-pointer graph ve autotune birleşimi | FP32 + Triton/cuDNN/CUDA/CUTLASS | 59.636 ms | 2.2744x | 20/20; kod farkı 0 |
-| Yayımlanan bağımsız Fast-Mimi API | FP32 + Triton/cuDNN/CUDA/CUTLASS | 59.881 ms | 2.2656x | 20/20; fallback yok |
-| Güncel dondurulmuş paired kapı | FP32 + Triton/cuDNN/CUDA/CUTLASS | **133.561 → 58.916 ms** | **2.2669x; %95 GA 2.2638x–2.2852x** | **20/20; kod farkı 0; ihlal 0** |
+| Accepted path | Precision / backend | 100-second end-to-end median | Speedup |
+|---|---|---:|---:|
+| Independent pure PyTorch reference | FP32 | 135.667 ms | 1.0000x |
+| Inductor + CUDA Graph + Triton/cuDNN base package | FP32 | 65.848 ms | 2.0603x |
+| Quality-safe RVQ + cuDNN plan recovery | FP32 | 62.235 ms | 2.1800x |
+| Native CUTLASS decoder-11 | FP16 input, FP32 accumulation/output | Included in the 62.235 ms package | 1.0645x over the previous package |
+| cuDNN + WMMA decoder-9 and native final-post | FP16 branch, FP32 residual/output | 60.878 ms | 2.2299x |
+| Selected WMMA decoder-12/final | FP16 pointwise, FP32 residual/final | 59.956 ms | 2.2628x |
+| Packed QKV, bit-equivalent RoPE, fixed-pointer encoder/bottleneck/decoder graphs, and autotuning | FP32 + Triton/cuDNN/CUDA/CUTLASS | 59.636 ms | 2.2744x |
+| Published independent Fast-Mimi API | FP32 + Triton/cuDNN/CUDA/CUTLASS | 59.881 ms | 2.2656x |
+| Latest frozen paired benchmark | FP32 + Triton/cuDNN/CUDA/CUTLASS | **133.561 → 58.916 ms** | **2.2669x; 95% CI 2.2638x–2.2852x** |
 
-Son kapı 50 dönüşümlü ölçüm çifti ve 10.000 bootstrap tekrarıyla çalıştırıldı.
-En kötü tolerans oranı `0.887200`, maksimum mutlak ses farkı `0.000197440` oldu.
-Dalga kalitesi dondurulmuş `atol=2e-4, rtol=1e-4` sözleşmesiyle korunur.
+The final row uses 50 alternating measurement pairs and 10,000 bootstrap
+resamples. Small baseline differences between rows reflect separate benchmark
+sessions.
 
-## Kurulum
+## Installation
 
-Saf PyTorch runtime:
+Portable PyTorch runtime:
 
 ```bash
 pip install "fast-mimi @ git+https://github.com/kadirnar/fast-mimi.git"
 ```
 
-RTX 5070 Ti/SM120 optimize runtime:
+RTX 5070 Ti/SM120 optimized runtime:
 
 ```bash
 pip install "fast-mimi[optimized] @ git+https://github.com/kadirnar/fast-mimi.git"
 ```
 
-## Kullanım
+## Usage
 
 ```python
 import torch
@@ -77,12 +78,13 @@ print(output.audio_codes.shape)
 print(output.audio_values.shape)
 ```
 
-Kısa sesler, farklı desteklenen şekiller, streaming, CPU ve SM120 dışındaki
-GPU'lar bağımsız saf PyTorch yolunu kullanır. Optimize sözleşme PyTorch
-`2.13.0+cu130`, Triton `3.7.1`, cuDNN frontend `1.27.0`, TileLang `0.1.13`,
-CUDA runtime 13.0, CUDA 13.3 compiler/CCCL ve Linux SM120 ile doğrulanmıştır.
+Short clips, other supported shapes, streaming calls, CPU execution, and
+non-SM120 GPUs use the independent portable PyTorch path. The optimized path
+was validated with PyTorch `2.13.0+cu130`, Triton `3.7.1`, cuDNN frontend
+`1.27.0`, TileLang `0.1.13`, CUDA runtime 13.0, the CUDA 13.3 compiler/CCCL
+packages, Linux, and SM120.
 
-## Lisans
+## License
 
-Fast-Mimi [Apache-2.0](LICENSE) lisanslıdır. `kyutai/mimi` ağırlıkları ayrıca
-CC-BY-4.0 ile dağıtılır.
+Fast-Mimi is licensed under [Apache-2.0](LICENSE). The `kyutai/mimi` weights
+are distributed separately under CC-BY-4.0.
