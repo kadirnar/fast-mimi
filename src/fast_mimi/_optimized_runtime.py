@@ -440,9 +440,9 @@ class _FusedDecoder9:
             branch_bias,
             output_elu_half=True,
         )
-        self.weight = pointwise_weight.squeeze(-1).squeeze(-1).to(
-            torch.float16
-        ).contiguous()
+        self.weight = (
+            pointwise_weight.squeeze(-1).squeeze(-1).to(torch.float16).contiguous()
+        )
         self.bias = pointwise_bias.contiguous()
         self.output_matrix = torch.empty(
             (residual.shape[-1], residual.shape[1]),
@@ -491,9 +491,9 @@ class _FusedDecoder12Final:
             branch_bias,
             output_elu_half=True,
         )
-        self.pointwise_weight = pointwise_weight.squeeze(-1).squeeze(-1).to(
-            torch.float16
-        ).contiguous()
+        self.pointwise_weight = (
+            pointwise_weight.squeeze(-1).squeeze(-1).to(torch.float16).contiguous()
+        )
         self.pointwise_bias = pointwise_bias.contiguous()
         self.final_weight = final_weight.contiguous()
         self.final_bias = final_bias.contiguous()
@@ -1353,9 +1353,7 @@ class OptimizedLongMimi(CompiledSeanetsMimi):
             if key.removesuffix(".bias") in self.fp16_decoder_layers
         }
         self._cutlass_bias_dgrad = load_cutlass_bias_dgrad()
-        self._fused_decoder9_wmma: FusedDecoder9Wmma | None = (
-            load_fused_decoder9_wmma()
-        )
+        self._fused_decoder9_wmma: FusedDecoder9Wmma | None = load_fused_decoder9_wmma()
         self._decoder12_final_wmma: Decoder12FinalWmma | None = (
             load_decoder12_final_wmma()
         )
@@ -2100,13 +2098,9 @@ class OptimizedLongMimi(CompiledSeanetsMimi):
                     cutlass11.decoder9 = _FusedDecoder9(
                         self._fused_decoder9_wmma,
                         residual9,
-                        self._decoder_weights4[
-                            "decoder.layers.9.block.1.conv.weight"
-                        ],
+                        self._decoder_weights4["decoder.layers.9.block.1.conv.weight"],
                         self.state["decoder.layers.9.block.1.conv.bias"],
-                        self._decoder_weights4[
-                            "decoder.layers.9.block.3.conv.weight"
-                        ],
+                        self._decoder_weights4["decoder.layers.9.block.3.conv.weight"],
                         self.state["decoder.layers.9.block.3.conv.bias"],
                     )
                 except Exception:
@@ -2125,13 +2119,9 @@ class OptimizedLongMimi(CompiledSeanetsMimi):
                     cutlass11.decoder12_final = _FusedDecoder12Final(
                         self._decoder12_final_wmma,
                         residual12,
-                        self._decoder_weights4[
-                            "decoder.layers.12.block.1.conv.weight"
-                        ],
+                        self._decoder_weights4["decoder.layers.12.block.1.conv.weight"],
                         self.state["decoder.layers.12.block.1.conv.bias"],
-                        self._decoder_weights4[
-                            "decoder.layers.12.block.3.conv.weight"
-                        ],
+                        self._decoder_weights4["decoder.layers.12.block.3.conv.weight"],
                         self.state["decoder.layers.12.block.3.conv.bias"],
                         self.state["decoder.layers.14.conv.weight"],
                         self.state["decoder.layers.14.conv.bias"],

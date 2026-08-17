@@ -82,9 +82,7 @@ class NativeFinalPost:
         self.library = ctypes.CDLL(str(_build_library()))
         self.function = self.library.mimi_final_post_cuda
         self.function.argtypes = (
-            [ctypes.c_int] * 3
-            + [ctypes.c_void_p] * 5
-            + [ctypes.c_int, ctypes.c_void_p]
+            [ctypes.c_int] * 3 + [ctypes.c_void_p] * 5 + [ctypes.c_int, ctypes.c_void_p]
         )
         self.function.restype = ctypes.c_int
 

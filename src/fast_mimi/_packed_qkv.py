@@ -139,15 +139,9 @@ class PackedQkvTransformer:
         self.weights = {
             f"{prefix}.layers.{index}": torch.cat(
                 (
-                    runtime.state[
-                        f"{prefix}.layers.{index}.self_attn.q_proj.weight"
-                    ],
-                    runtime.state[
-                        f"{prefix}.layers.{index}.self_attn.k_proj.weight"
-                    ],
-                    runtime.state[
-                        f"{prefix}.layers.{index}.self_attn.v_proj.weight"
-                    ],
+                    runtime.state[f"{prefix}.layers.{index}.self_attn.q_proj.weight"],
+                    runtime.state[f"{prefix}.layers.{index}.self_attn.k_proj.weight"],
+                    runtime.state[f"{prefix}.layers.{index}.self_attn.v_proj.weight"],
                 ),
                 dim=0,
             ).contiguous()
@@ -186,9 +180,10 @@ class PackedQkvTransformer:
                 attended,
                 runtime.state[f"{name}.self_attn.o_proj.weight"],
             )
-            hidden = residual + attended * runtime.state[
-                f"{name}.self_attn_layer_scale.scale"
-            ]
+            hidden = (
+                residual
+                + attended * runtime.state[f"{name}.self_attn_layer_scale.scale"]
+            )
             residual = hidden
             normalized = F.layer_norm(
                 hidden,
@@ -203,8 +198,5 @@ class PackedQkvTransformer:
             )
             mlp = F.gelu(mlp)
             mlp = F.linear(mlp, runtime.state[f"{name}.mlp.fc2.weight"])
-            hidden = residual + mlp * runtime.state[
-                f"{name}.mlp_layer_scale.scale"
-            ]
+            hidden = residual + mlp * runtime.state[f"{name}.mlp_layer_scale.scale"]
         return hidden
-

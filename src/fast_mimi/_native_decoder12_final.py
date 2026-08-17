@@ -87,9 +87,7 @@ class Decoder12FinalWmma:
         self.library = ctypes.CDLL(str(_build() if path is None else path))
         self.function = self.library.mimi_decoder12_final_wmma
         self.function.argtypes = (
-            [ctypes.c_void_p] * 7
-            + [ctypes.c_int] * 2
-            + [ctypes.c_void_p]
+            [ctypes.c_void_p] * 7 + [ctypes.c_int] * 2 + [ctypes.c_void_p]
         )
         self.function.restype = ctypes.c_int
 

@@ -94,9 +94,7 @@ class FusedDecoder9Wmma:
         self.library = ctypes.CDLL(str(path))
         self.function = self.library.mimi_decoder9_fused_wmma
         self.function.argtypes = (
-            [ctypes.c_void_p] * 5
-            + [ctypes.c_int]
-            + [ctypes.c_void_p]
+            [ctypes.c_void_p] * 5 + [ctypes.c_int] + [ctypes.c_void_p]
         )
         self.function.restype = ctypes.c_int
 
