@@ -4,7 +4,14 @@ Only configuration, model, output, and streaming-cache types are re-exported.
 Optional audio dependencies stay isolated in their own module.
 """
 
-from .config import KYUTAI_MIMI_REVISION, MimiConfig
+from .config import (
+    KYUTAI_MIMI_MODEL_ID,
+    KYUTAI_MIMI_PARAMETER_COUNT,
+    KYUTAI_MIMI_PARAMETER_FINGERPRINT,
+    KYUTAI_MIMI_REVISION,
+    KYUTAI_MIMI_WEIGHTS_SHA256,
+    MimiConfig,
+)
 from .model import (
     MimiConv1dPaddingCache,
     MimiDecoderOutput,
@@ -15,7 +22,11 @@ from .model import (
 )
 
 __all__ = [
+    "KYUTAI_MIMI_MODEL_ID",
+    "KYUTAI_MIMI_PARAMETER_COUNT",
+    "KYUTAI_MIMI_PARAMETER_FINGERPRINT",
     "KYUTAI_MIMI_REVISION",
+    "KYUTAI_MIMI_WEIGHTS_SHA256",
     "MimiConfig",
     "MimiConv1dPaddingCache",
     "MimiDecoderOutput",

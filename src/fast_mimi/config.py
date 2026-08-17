@@ -15,7 +15,15 @@ from typing import Any
 
 from huggingface_hub import hf_hub_download
 
+KYUTAI_MIMI_MODEL_ID = "kyutai/mimi"
 KYUTAI_MIMI_REVISION = "89091b3e466eb6a9d11e537bf26b144f194978f7"
+KYUTAI_MIMI_WEIGHTS_SHA256 = (
+    "bac7e85083dcded655d24eaadde7e6eea34c0da1b35fa2d284e641bd2b942a5e"
+)
+KYUTAI_MIMI_PARAMETER_FINGERPRINT = (
+    "3feaa6168b191ffdebfd8f695b963f72c8d847a3966f7cc3283af6b38d437bb4"
+)
+KYUTAI_MIMI_PARAMETER_COUNT = 79_308_609
 
 
 @dataclass

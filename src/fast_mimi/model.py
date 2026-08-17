@@ -30,6 +30,7 @@ import os
 import threading
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, fields
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -39,7 +40,13 @@ from huggingface_hub import hf_hub_download
 from safetensors.torch import load_file, save_file
 from torch import Tensor, nn
 
-from .config import KYUTAI_MIMI_REVISION, MimiConfig
+from .config import (
+    KYUTAI_MIMI_MODEL_ID,
+    KYUTAI_MIMI_PARAMETER_COUNT,
+    KYUTAI_MIMI_REVISION,
+    KYUTAI_MIMI_WEIGHTS_SHA256,
+    MimiConfig,
+)
 
 _CUDNN_BENCHMARK_LOCK = threading.Lock()
 _DISABLED_ENV_VALUES = frozenset({"1", "true", "yes"})
@@ -56,6 +63,32 @@ _PROFILED_LONG_ATTENTION_SHAPE = (1, 8, 2_500, 64)
 _PROFILED_LONG_ATTENTION_STRIDE = (1_280_000, 64, 512, 1)
 _PROFILED_RVQ_EMBEDDINGS_SHAPE = (1, 512, 13)
 _PROFILED_RVQ_CODES_SHAPE = (1, 32, 13)
+_DECLARED_MIMI_CONFIG = {
+    "sampling_rate": 24_000,
+    "frame_rate": 12.5,
+    "audio_channels": 1,
+    "codebook_size": 2_048,
+}
+
+
+def _file_sha256(path: Path) -> str:
+    """Return a streaming SHA-256 digest without duplicating the checkpoint in RAM."""
+    digest = sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _assert_declared_mimi_config(config: MimiConfig) -> None:
+    """Reject architecture drift for the published, identity-locked checkpoint."""
+    for name, expected in _DECLARED_MIMI_CONFIG.items():
+        actual = getattr(config, name)
+        if actual != expected:
+            raise RuntimeError(
+                f"declared checkpoint config {name!r} changed: "
+                f"{actual!r} != {expected!r}"
+            )
 
 
 def _optional_path_enabled(disable_variable: str) -> bool:
@@ -2716,6 +2749,12 @@ class MimiModel(nn.Module):
         self._cuda_graph_enabled = _optional_path_enabled(
             "FAST_MIMI_DISABLE_CUDA_GRAPH"
         )
+        self._optimized_long_runtime: Any | None = None
+        self._optimized_long_runtime_failed = False
+        self._optimized_long_runtime_error: str | None = None
+        self._optimized_long_runtime_enabled = _optional_path_enabled(
+            "FAST_MIMI_DISABLE_OPTIMIZED_LONG"
+        )
         self.bits_per_codebook = int(math.log2(self.config.codebook_size))
         if 2**self.bits_per_codebook != self.config.codebook_size:
             raise ValueError("codebook_size must be a power of two")
@@ -2731,6 +2770,9 @@ class MimiModel(nn.Module):
         """
         self._cuda_graph_runner = None
         self._cuda_graph_failed = False
+        self._optimized_long_runtime = None
+        self._optimized_long_runtime_failed = False
+        self._optimized_long_runtime_error = None
         self.encoder._clear_runtime_caches()
         self.decoder._clear_runtime_caches()
         self.quantizer._clear_runtime_caches()
@@ -2801,7 +2843,7 @@ class MimiModel(nn.Module):
     @classmethod
     def from_pretrained(
         cls,
-        model_id: str | Path = "kyutai/mimi",
+        model_id: str | Path = KYUTAI_MIMI_MODEL_ID,
         *,
         revision: str = KYUTAI_MIMI_REVISION,
         cache_dir: str | Path | None = None,
@@ -2838,6 +2880,12 @@ class MimiModel(nn.Module):
             RuntimeError: If strict state loading finds missing, unexpected, or
                 incompatible tensors.
         """
+        declared_checkpoint = str(model_id) == KYUTAI_MIMI_MODEL_ID
+        if declared_checkpoint and revision != KYUTAI_MIMI_REVISION:
+            raise ValueError(
+                "declared kyutai/mimi revision changed: "
+                f"{revision!r} != {KYUTAI_MIMI_REVISION!r}"
+            )
         local_path = Path(model_id)
         if local_path.exists():
             config_path = local_path / "config.json"
@@ -2861,10 +2909,24 @@ class MimiModel(nn.Module):
                     local_files_only=local_files_only,
                 )
             )
-        model = cls(
-            MimiConfig.from_json_file(config_path), attention_backend=attention_backend
-        )
+        config = MimiConfig.from_json_file(config_path)
+        if declared_checkpoint:
+            _assert_declared_mimi_config(config)
+            actual_sha256 = _file_sha256(weights_path)
+            if actual_sha256 != KYUTAI_MIMI_WEIGHTS_SHA256:
+                raise RuntimeError(
+                    "declared kyutai/mimi checkpoint digest changed: "
+                    f"{actual_sha256} != {KYUTAI_MIMI_WEIGHTS_SHA256}"
+                )
+        model = cls(config, attention_backend=attention_backend)
         model.load_state_dict(load_file(weights_path, device="cpu"), strict=True)
+        if declared_checkpoint:
+            parameter_count = sum(parameter.numel() for parameter in model.parameters())
+            if parameter_count != KYUTAI_MIMI_PARAMETER_COUNT:
+                raise RuntimeError(
+                    "declared kyutai/mimi parameter count changed: "
+                    f"{parameter_count} != {KYUTAI_MIMI_PARAMETER_COUNT}"
+                )
         if device is not None or dtype is not None:
             model.to(device=device, dtype=dtype)
         return model.eval()
@@ -3196,6 +3258,76 @@ class MimiModel(nn.Module):
             audio_codes, audio_values, encoder_past_key_values, decoder_past_key_values
         )
 
+    def _can_use_optimized_long(
+        self,
+        input_values: Tensor,
+        padding_mask: Tensor,
+        num_quantizers: int,
+        audio_codes: Tensor | None,
+        encoder_past_key_values: MimiKVCache | None,
+        decoder_past_key_values: MimiKVCache | None,
+        return_dict: bool,
+    ) -> bool:
+        """Check the complete contract measured for the accepted SM120 path."""
+        return (
+            self._optimized_long_runtime_enabled
+            and not self._optimized_long_runtime_failed
+            and not self.training
+            and torch.is_inference_mode_enabled()
+            and not torch.compiler.is_compiling()
+            and input_values.device.type == "cuda"
+            and input_values.dtype == torch.float32
+            and tuple(input_values.shape) == _PROFILED_LONG_AUDIO_SHAPE
+            and input_values.is_contiguous()
+            and not input_values.requires_grad
+            and padding_mask.device == input_values.device
+            and padding_mask.dtype == torch.bool
+            and tuple(padding_mask.shape) == _PROFILED_LONG_AUDIO_SHAPE
+            and padding_mask.is_contiguous()
+            and num_quantizers == 8
+            and audio_codes is None
+            and encoder_past_key_values is None
+            and decoder_past_key_values is None
+            and return_dict
+            and self.attention_backend == "sdpa"
+            and torch.__version__.split("+", 1)[0] == "2.13.0"
+            and torch.version.cuda == "13.0"
+            and torch.cuda.get_device_capability(input_values.device)
+            == _PROFILED_SM_CAPABILITY
+            and not torch.backends.cuda.matmul.allow_tf32
+            and torch.backends.cudnn.allow_tf32
+            and not torch.cuda.is_current_stream_capturing()
+        )
+
+    def _run_optimized_long(
+        self,
+        input_values: Tensor,
+        padding_mask: Tensor,
+        num_quantizers: int,
+    ) -> MimiOutput | None:
+        """Run the accepted runtime or permanently fail closed to pure PyTorch."""
+        try:
+            if self._optimized_long_runtime is None:
+                from ._optimized_runtime import OptimizedLongMimi
+
+                self._optimized_long_runtime = OptimizedLongMimi(self)
+            output = self._optimized_long_runtime.forward(
+                input_values,
+                padding_mask,
+                num_quantizers,
+            )
+            return MimiOutput(
+                output.audio_codes.clone(),
+                output.audio_values.clone(),
+                None,
+                None,
+            )
+        except Exception as error:  # noqa: BLE001 - optional backend fails closed.
+            self._optimized_long_runtime = None
+            self._optimized_long_runtime_failed = True
+            self._optimized_long_runtime_error = repr(error)
+            return None
+
     def _can_use_cuda_graph(
         self,
         input_values: Tensor,
@@ -3350,6 +3482,22 @@ class MimiModel(nn.Module):
             if padding_mask is None
             else padding_mask
         )
+        if self._can_use_optimized_long(
+            input_values,
+            effective_mask,
+            resolved_quantizers,
+            audio_codes,
+            encoder_past_key_values,
+            decoder_past_key_values,
+            resolved_return_dict,
+        ):
+            optimized_output = self._run_optimized_long(
+                input_values,
+                effective_mask,
+                resolved_quantizers,
+            )
+            if optimized_output is not None:
+                return optimized_output
         if self._can_use_cuda_graph(
             input_values,
             effective_mask,
