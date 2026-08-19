@@ -1,126 +1,85 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 960" role="img" aria-labelledby="title desc">
-<title id="title">Mimi optimization search trajectory and production comparison</title>
-<desc id="desc">AutoKernel-style plot of 28 fast-kernel experiments and within-baseline speedups for fast-kernel and Fast-Mimi workloads.</desc>
-<rect width="1440" height="960" fill="#ffffff"/>
-<style>text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#172033}.axis{font-size:13px;fill:#536178}.small{font-size:12px;fill:#536178}.phase{font-size:13px;font-weight:700}.label{font-size:12px;font-weight:700;fill:#08785a}.value{font-size:13px;font-weight:750}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;fill:#536178}</style>
-<text x="720" y="42" text-anchor="middle" font-size="30" font-weight="760">Mimi Optimization · Search Trajectory and Production Comparison</text>
-<text x="720" y="75" text-anchor="middle" font-size="16" fill="#536178">fast-kernel campaign · 28 attempts · 8 kept · 5.1507 → 1.7215 ms · 2.992× frozen-baseline speedup</text>
-<rect x="104.00" y="128" width="216.55" height="462" fill="#eef4ff"/>
-<text class="phase" x="212.28" y="154" text-anchor="middle" fill="#4c7fe8">Kernel / compiler probes</text>
-<rect x="320.55" y="128" width="519.72" height="462" fill="#f5efff"/>
-<text class="phase" x="580.41" y="154" text-anchor="middle" fill="#8b5cf6">ATen &amp; dispatch</text>
-<rect x="840.28" y="128" width="129.93" height="462" fill="#fff7e8"/>
-<text class="phase" x="905.24" y="154" text-anchor="middle" fill="#d98216">Fusion / native probes</text>
-<rect x="970.21" y="128" width="259.86" height="462" fill="#fff0f1"/>
-<text class="phase" x="1100.14" y="154" text-anchor="middle" fill="#df4c4c">TorchScript regions</text>
-<rect x="1230.07" y="128" width="129.93" height="462" fill="#eaf8f4"/>
-<text class="phase" x="1295.03" y="154" text-anchor="middle" fill="#168e9e">CUDA Graph / layout</text>
-<line x1="104" y1="590.00" x2="1360" y2="590.00" stroke="#d9e0ea" stroke-width="1"/>
-<text class="axis" x="90" y="595.00" text-anchor="end">0.5×</text>
-<line x1="104" y1="504.44" x2="1360" y2="504.44" stroke="#d9e0ea" stroke-width="1"/>
-<text class="axis" x="90" y="509.44" text-anchor="end">1.0×</text>
-<line x1="104" y1="418.89" x2="1360" y2="418.89" stroke="#d9e0ea" stroke-width="1"/>
-<text class="axis" x="90" y="423.89" text-anchor="end">1.5×</text>
-<line x1="104" y1="333.33" x2="1360" y2="333.33" stroke="#d9e0ea" stroke-width="1"/>
-<text class="axis" x="90" y="338.33" text-anchor="end">2.0×</text>
-<line x1="104" y1="247.78" x2="1360" y2="247.78" stroke="#d9e0ea" stroke-width="1"/>
-<text class="axis" x="90" y="252.78" text-anchor="end">2.5×</text>
-<line x1="104" y1="162.22" x2="1360" y2="162.22" stroke="#d9e0ea" stroke-width="1"/>
-<text class="axis" x="90" y="167.22" text-anchor="end">3.0×</text>
-<line x1="125.66" y1="128" x2="125.66" y2="590" stroke="#e8edf3" stroke-width="1"/>
-<text class="axis" x="125.66" y="618" text-anchor="middle">0</text>
-<line x1="298.90" y1="128" x2="298.90" y2="590" stroke="#e8edf3" stroke-width="1"/>
-<text class="axis" x="298.90" y="618" text-anchor="middle">4</text>
-<line x1="472.14" y1="128" x2="472.14" y2="590" stroke="#e8edf3" stroke-width="1"/>
-<text class="axis" x="472.14" y="618" text-anchor="middle">8</text>
-<line x1="645.38" y1="128" x2="645.38" y2="590" stroke="#e8edf3" stroke-width="1"/>
-<text class="axis" x="645.38" y="618" text-anchor="middle">12</text>
-<line x1="818.62" y1="128" x2="818.62" y2="590" stroke="#e8edf3" stroke-width="1"/>
-<text class="axis" x="818.62" y="618" text-anchor="middle">16</text>
-<line x1="991.86" y1="128" x2="991.86" y2="590" stroke="#e8edf3" stroke-width="1"/>
-<text class="axis" x="991.86" y="618" text-anchor="middle">20</text>
-<line x1="1165.10" y1="128" x2="1165.10" y2="590" stroke="#e8edf3" stroke-width="1"/>
-<text class="axis" x="1165.10" y="618" text-anchor="middle">24</text>
-<line x1="1338.34" y1="128" x2="1338.34" y2="590" stroke="#e8edf3" stroke-width="1"/>
-<text class="axis" x="1338.34" y="618" text-anchor="middle">28</text>
-<rect x="104" y="128" width="1256" height="462" fill="none" stroke="#c9d2df" stroke-width="1.2"/>
-<text x="732" y="650" text-anchor="middle" font-size="15" font-weight="650">Experiment #</text>
-<text x="27" y="359" text-anchor="middle" transform="rotate(-90 27 359)" font-size="15" font-weight="650">Speedup vs frozen baseline (×)</text>
-<line x1="104" y1="504.44" x2="1360" y2="504.44" stroke="#5c7cfa" stroke-width="2.2" stroke-dasharray="8 6"/>
-<text x="1350" y="494.44" text-anchor="end" font-size="13" font-weight="700" fill="#4c6de0">FP32 baseline · 5.1507 ms</text>
-<path d="M 125.66 504.44 H 168.97 V 504.44 H 212.28 V 504.44 H 255.59 V 504.44 H 298.90 V 504.44 H 342.21 V 501.89 H 385.52 V 496.02 H 428.83 V 493.57 H 472.14 V 493.57 H 515.45 V 493.57 H 558.76 V 493.57 H 602.07 V 483.62 H 645.38 V 483.62 H 688.69 V 483.62 H 732.00 V 483.62 H 775.31 V 483.62 H 818.62 V 483.62 H 861.93 V 483.62 H 905.24 V 483.62 H 948.55 V 483.62 H 991.86 V 475.24 H 1035.17 V 475.24 H 1078.48 V 460.72 H 1121.79 V 432.55 H 1165.10 V 432.55 H 1208.41 V 432.55 H 1251.72 V 163.58 H 1295.03 V 163.58 H 1338.34 V 163.58" fill="none" stroke="#17a879" stroke-width="4" stroke-linejoin="round" opacity="0.78"/>
-<circle cx="125.66" cy="504.44" r="7" fill="#5c7cfa" stroke="#344fb2" stroke-width="1.5"><title>Frozen baseline · 5.1507 ms</title></circle>
-<circle cx="168.97" cy="506.54" r="4.5" fill="#c5cfdd" stroke="#8592a5" stroke-width="0.7"><title>#1 Triton tiled layout · rejected · 5.2147 ms</title></circle>
-<rect x="207.28" y="567.89" width="10" height="10" transform="rotate(45 212.28 572.89)" fill="#ffffff" stroke="#e69024" stroke-width="2"><title>#2 Triton LayerNorm + ELU fusion · correctness gate</title></rect>
-<circle cx="255.59" cy="576.56" r="4.5" fill="#c5cfdd" stroke="#8592a5" stroke-width="0.7"><title>#3 Inductor decoder fragments · rejected · 8.9029 ms</title></circle>
-<rect x="293.90" y="567.89" width="10" height="10" transform="rotate(45 298.90 572.89)" fill="#ffffff" stroke="#e69024" stroke-width="2"><title>#4 cuDNN measured tactics · correctness gate</title></rect>
-<circle cx="342.21" cy="501.89" r="7" fill="#17a879" stroke="#08785a" stroke-width="1.5"><title>#5 ATen storage reuse · 5.0749 ms · 1.015×</title></circle>
-<circle cx="385.52" cy="496.02" r="7" fill="#17a879" stroke="#08785a" stroke-width="1.5"><title>#6 Direct LayerNorm dispatch · 4.9090 ms · 1.049×</title></circle>
-<circle cx="428.83" cy="493.57" r="7" fill="#17a879" stroke="#08785a" stroke-width="1.5"><title>#7 Residual dispatch collapse · 4.8428 ms · 1.064×</title></circle>
-<circle cx="472.14" cy="496.68" r="4.5" fill="#c5cfdd" stroke="#8592a5" stroke-width="0.7"><title>#8 Resampling dispatch collapse · rejected · 4.9272 ms</title></circle>
-<circle cx="515.45" cy="503.93" r="4.5" fill="#c5cfdd" stroke="#8592a5" stroke-width="0.7"><title>#9 RVQ storage reuse · rejected · 5.1351 ms</title></circle>
-<circle cx="558.76" cy="492.82" r="4.5" fill="#c5cfdd" stroke="#8592a5" stroke-width="0.7"><title>#10 Identity-affine LayerNorm elision · rejected · 4.8229 ms</title></circle>
-<circle cx="602.07" cy="483.62" r="7" fill="#17a879" stroke="#08785a" stroke-width="1.5"><title>#11 TorchScript RVQ loop · 4.5918 ms · 1.122×</title></circle>
-<circle cx="645.38" cy="483.73" r="4.5" fill="#c5cfdd" stroke="#8592a5" stroke-width="0.7"><title>#12 Direct Conv1d dispatch · rejected · 4.5946 ms</title></circle>
-<circle cx="688.69" cy="481.71" r="4.5" fill="#c5cfdd" stroke="#8592a5" stroke-width="0.7"><title>#13 Prepare-time metadata binding · rejected · 4.5467 ms</title></circle>
-<circle cx="732.00" cy="493.99" r="4.5" fill="#c5cfdd" stroke="#8592a5" stroke-width="0.7"><title>#14 Codec graph dispatch collapse · rejected · 4.8541 ms</title></circle>
-<circle cx="775.31" cy="503.13" r="4.5" fill="#c5cfdd" stroke="#8592a5" stroke-width="0.7"><title>#15 Direct native LayerNorm · rejected · 5.1113 ms</title></circle>
-<path d="M 812.62 566.89 L 824.62 578.89 M 824.62 566.89 L 812.62 578.89" stroke="#df4c4c" stroke-width="3" stroke-linecap="round"><title>#16 Frozen tensor mutation · crash</title></path>
-<circle cx="861.93" cy="511.45" r="4.5" fill="#c5cfdd" stroke="#8592a5" stroke-width="0.7"><title>#17 Triton ELU + layout · rejected · 5.3707 ms</title></circle>
-<circle cx="905.24" cy="494.51" r="4.5" fill="#c5cfdd" stroke="#8592a5" stroke-width="0.7"><title>#18 ATen OpOverload dispatch · rejected · 4.8682 ms</title></circle>
-<circle cx="948.55" cy="485.63" r="4.5" fill="#c5cfdd" stroke="#8592a5" stroke-width="0.7"><title>#19 Codebook norm hoist · rejected · 4.6405 ms</title></circle>
-<circle cx="991.86" cy="475.24" r="7" fill="#17a879" stroke="#08785a" stroke-width="1.5"><title>#20 TorchScript residual unit · 4.3997 ms · 1.171×</title></circle>
-<circle cx="1035.17" cy="470.10" r="4.5" fill="#c5cfdd" stroke="#8592a5" stroke-width="0.7"><title>#21 TorchScript transformer loop · rejected · 4.2897 ms</title></circle>
-<circle cx="1078.48" cy="460.72" r="7" fill="#17a879" stroke="#08785a" stroke-width="1.5"><title>#22 TorchScript residual block · 4.1024 ms · 1.256×</title></circle>
-<circle cx="1121.79" cy="432.55" r="7" fill="#17a879" stroke="#08785a" stroke-width="1.5"><title>#23 TorchScript convolutional stacks · 3.6269 ms · 1.420×</title></circle>
-<circle cx="1165.10" cy="476.33" r="4.5" fill="#c5cfdd" stroke="#8592a5" stroke-width="0.7"><title>#24 Repeated residual-unit script · rejected · 4.4239 ms</title></circle>
-<circle cx="1208.41" cy="443.95" r="4.5" fill="#c5cfdd" stroke="#8592a5" stroke-width="0.7"><title>#25 Repeated conv-stack script · rejected · 3.8053 ms</title></circle>
-<circle cx="1251.72" cy="163.58" r="7" fill="#17a879" stroke="#08785a" stroke-width="1.5"><title>#26 Whole-forward CUDA Graph · 1.7215 ms · 2.992×</title></circle>
-<circle cx="1295.03" cy="160.34" r="4.5" fill="#c5cfdd" stroke="#8592a5" stroke-width="0.7"><title>#27 Channels-last residual region · rejected · 1.7106 ms</title></circle>
-<path d="M 1332.34 566.89 L 1344.34 578.89 M 1344.34 566.89 L 1332.34 578.89" stroke="#df4c4c" stroke-width="3" stroke-linecap="round"><title>#28 Persistent NHWC attempt · crash</title></path>
-<line x1="342.21" y1="493.89" x2="350.61" y2="486.89" stroke="#17a879" stroke-width="1.2"/>
-<text class="label" x="354.21" y="481.89" text-anchor="start">ATen reuse</text>
-<line x1="602.07" y1="475.62" x2="609.07" y2="468.62" stroke="#17a879" stroke-width="1.2"/>
-<text class="label" x="612.07" y="463.62" text-anchor="start">TorchScript RVQ</text>
-<line x1="991.86" y1="467.24" x2="986.26" y2="458.24" stroke="#17a879" stroke-width="1.2"/>
-<text class="label" x="983.86" y="453.24" text-anchor="end">TS residual</text>
-<line x1="1121.79" y1="424.55" x2="1116.19" y2="413.55" stroke="#17a879" stroke-width="1.2"/>
-<text class="label" x="1113.79" y="408.55" text-anchor="end">TS conv stacks</text>
-<g transform="translate(1162,189.57399999999996)"><rect width="188" height="51" rx="5" fill="#ffffff" stroke="#17a879" stroke-width="1.5"/><text x="12" y="21" font-size="16" font-weight="780" fill="#08785a">2.992× · 1.7215 ms</text><text class="small" x="12" y="39">retained at experiment 26</text></g>
-<g transform="translate(116,510)"><rect width="330" height="64" rx="4" fill="#ffffff" fill-opacity="0.92" stroke="#c9d2df"/><text class="mono" x="10" y="18">synthetic Mimi-style · [1,1,8192] FP32</text><text class="mono" x="10" y="36">RTX 5070 Ti · 0.341 s audio · 8 codebooks</text><text class="mono" x="10" y="54">28 attempts | 8 kept | 18 rejected | 2 crashes</text></g>
-<g transform="translate(920,522)"><circle cx="7" cy="6" r="6" fill="#17a879"/><text class="small" x="20" y="10">Kept</text><circle cx="82" cy="6" r="4.5" fill="#c5cfdd"/><text class="small" x="95" y="10">Rejected</text><rect x="177" y="1" width="10" height="10" transform="rotate(45 182 6)" fill="#ffffff" stroke="#e69024" stroke-width="1.5"/><text class="small" x="195" y="10">Gate</text><path d="M 266 0 L 278 12 M 278 0 L 266 12" stroke="#df4c4c" stroke-width="2.5"/><text class="small" x="286" y="10">Crash</text><line x1="349" y1="6" x2="375" y2="6" stroke="#17a879" stroke-width="4"/><text class="small" x="383" y="10">Frontier</text></g>
-<line x1="80" y1="668" x2="1360" y2="668" stroke="#d9e0ea"/>
-<text x="80" y="707" font-size="23" font-weight="750">Within-baseline end-to-end speedup</text>
-<text x="1360" y="707" text-anchor="end" class="small">Same GPU; different models, input lengths, and protocols — not a head-to-head benchmark.</text>
-<line x1="448.00" y1="730" x2="448.00" y2="900" stroke="#e4e9f0"/>
-<text class="axis" x="448.00" y="922" text-anchor="middle">1.0×</text>
-<line x1="641.33" y1="730" x2="641.33" y2="900" stroke="#e4e9f0"/>
-<text class="axis" x="641.33" y="922" text-anchor="middle">1.5×</text>
-<line x1="834.67" y1="730" x2="834.67" y2="900" stroke="#e4e9f0"/>
-<text class="axis" x="834.67" y="922" text-anchor="middle">2.0×</text>
-<line x1="1028.00" y1="730" x2="1028.00" y2="900" stroke="#e4e9f0"/>
-<text class="axis" x="1028.00" y="922" text-anchor="middle">2.5×</text>
-<line x1="1221.33" y1="730" x2="1221.33" y2="900" stroke="#e4e9f0"/>
-<text class="axis" x="1221.33" y="922" text-anchor="middle">3.0×</text>
-<text x="430" y="757" text-anchor="end" font-size="13">fast-kernel · synthetic 0.341 s input</text>
-<line x1="448.00" y1="752" x2="1218.28" y2="752" stroke="#17a879" stroke-width="5" opacity="0.68"/>
-<circle cx="1218.28" cy="752" r="7" fill="#17a879" stroke="#172033" stroke-width="0.8"/>
-<text class="value" x="1231.28" y="750" fill="#17a879">2.992×</text>
-<text class="small" x="1231.28" y="765">5.1507 → 1.7215 ms</text>
-<text x="430" y="801" text-anchor="end" font-size="13">Fast-Mimi · real 5 s input</text>
-<line x1="448.00" y1="796" x2="767.04" y2="796" stroke="#168e9e" stroke-width="5" opacity="0.68"/>
-<circle cx="767.04" cy="796" r="7" fill="#168e9e" stroke="#172033" stroke-width="0.8"/>
-<text class="value" x="780.04" y="794" fill="#168e9e">1.825×</text>
-<text class="small" x="780.04" y="809">10.033 → 5.497 ms</text>
-<text x="430" y="845" text-anchor="end" font-size="13">Fast-Mimi · real 10 s input</text>
-<line x1="448.00" y1="840" x2="588.40" y2="840" stroke="#168e9e" stroke-width="5" opacity="0.68"/>
-<circle cx="588.40" cy="840" r="7" fill="#168e9e" stroke="#172033" stroke-width="0.8"/>
-<text class="value" x="601.40" y="838" fill="#168e9e">1.363×</text>
-<text class="small" x="601.40" y="853">12.644 → 9.276 ms</text>
-<text x="430" y="889" text-anchor="end" font-size="13">Fast-Mimi · real 100 s input</text>
-<line x1="448.00" y1="884" x2="937.87" y2="884" stroke="#168e9e" stroke-width="5" opacity="0.68"/>
-<circle cx="937.87" cy="884" r="7" fill="#168e9e" stroke="#172033" stroke-width="0.8"/>
-<text class="value" x="950.87" y="882" fill="#168e9e">2.267×</text>
-<text class="small" x="950.87" y="897">133.561 → 58.916 ms</text>
-<text class="small" x="720" y="948" text-anchor="middle">Click the chart in README for the interactive report and technique-level comparison.</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+<title id="title">Mimi matched real-speech optimization comparison</title>
+<desc id="desc">AutoKernel-style progress and latency plots for fast-kernel and Fast-Mimi on the same five-second LibriSpeech input, checkpoint, GPU, and eight codebooks.</desc>
+<rect width="1440" height="900" fill="#ffffff"/>
+<style>
+  text{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#172033}
+  .axis{font-size:13px;fill:#536178}.small{font-size:12px;fill:#536178}.value{font-size:14px;font-weight:760}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;fill:#536178}
+</style>
+<text x="720" y="44" text-anchor="middle" font-size="30" font-weight="760">Mimi Optimization · Matched Real Speech</text>
+<text x="720" y="77" text-anchor="middle" font-size="16" fill="#536178">same 5 s LibriSpeech crop · 8 codebooks · 15.508 → 5.675 ms · 2.733× vs Transformers baseline</text>
+
+<rect x="104" y="124" width="1256" height="390" fill="none" stroke="#c9d2df" stroke-width="1.2"/>
+<rect x="104" y="124" width="314" height="390" fill="#eef4ff"/>
+<rect x="418" y="124" width="314" height="390" fill="#eaf8f4"/>
+<rect x="732" y="124" width="628" height="390" fill="#eaf8fb"/>
+<text x="261" y="151" text-anchor="middle" font-size="13" font-weight="700" fill="#5c7cfa">REFERENCE</text>
+<text x="575" y="151" text-anchor="middle" font-size="13" font-weight="700" fill="#17a879">FAST-KERNEL</text>
+<text x="1046" y="151" text-anchor="middle" font-size="13" font-weight="700" fill="#168e9e">FAST-MIMI</text>
+
+<line x1="104" y1="476" x2="1360" y2="476" stroke="#d9e0ea"/>
+<text class="axis" x="90" y="481" text-anchor="end">1.0×</text>
+<line x1="104" y1="377" x2="1360" y2="377" stroke="#d9e0ea"/>
+<text class="axis" x="90" y="382" text-anchor="end">1.5×</text>
+<line x1="104" y1="278" x2="1360" y2="278" stroke="#d9e0ea"/>
+<text class="axis" x="90" y="283" text-anchor="end">2.0×</text>
+<line x1="104" y1="179" x2="1360" y2="179" stroke="#d9e0ea"/>
+<text class="axis" x="90" y="184" text-anchor="end">2.5×</text>
+<line x1="104" y1="476" x2="1360" y2="476" stroke="#5c7cfa" stroke-width="2.2" stroke-dasharray="8 6"/>
+
+<path d="M 261 476 H 575 V 376.4 H 889 V 367.2 H 1203 V 132.9" fill="none" stroke="#17a879" stroke-width="4" stroke-linejoin="round" opacity="0.78"/>
+<circle cx="261" cy="476" r="8" fill="#5c7cfa" stroke="#172033" stroke-width="1"/>
+<circle cx="575" cy="376.4" r="8" fill="#17a879" stroke="#172033" stroke-width="1"/>
+<circle cx="889" cy="367.2" r="8" fill="#168e9e" stroke="#172033" stroke-width="1"/>
+<circle cx="1203" cy="132.9" r="8" fill="#168e9e" stroke="#172033" stroke-width="1"/>
+
+<text class="value" x="273" y="457" fill="#5c7cfa">1.000×</text>
+<text class="small" x="273" y="474">15.508 ms</text>
+<text class="value" x="587" y="357" fill="#17a879">1.503×</text>
+<text class="small" x="587" y="374">10.320 ms</text>
+<text class="value" x="901" y="348" fill="#168e9e">1.549×</text>
+<text class="small" x="901" y="365">10.010 ms</text>
+<text class="value" x="1191" y="167" text-anchor="end" fill="#168e9e">2.733×</text>
+<text class="small" x="1191" y="184" text-anchor="end">5.675 ms</text>
+
+<text x="261" y="540" text-anchor="middle" font-size="13">Transformers reference</text>
+<text x="575" y="540" text-anchor="middle" font-size="13">fast-kernel native</text>
+<text x="889" y="540" text-anchor="middle" font-size="13">Fast-Mimi functional FP32</text>
+<text x="1203" y="540" text-anchor="middle" font-size="13">Fast-Mimi guarded SM120</text>
+<text x="28" y="319" text-anchor="middle" transform="rotate(-90 28 319)" font-size="15" font-weight="650">Speedup vs Transformers baseline (×)</text>
+
+<g transform="translate(118,425)">
+  <rect width="430" height="72" rx="4" fill="#ffffff" fill-opacity="0.94" stroke="#c9d2df"/>
+  <text class="mono" x="11" y="19">LibriSpeech 1272-128104-0004 · SHA 07244790…c5404</text>
+  <text class="mono" x="11" y="38">crop 10.48–15.48 s · 120,000 FP32 PCM · 24 kHz mono</text>
+  <text class="mono" x="11" y="57">8 codebooks · RTX 5070 Ti · output hashes byte-identical</text>
+</g>
+
+<line x1="80" y1="578" x2="1360" y2="578" stroke="#d9e0ea"/>
+<text x="80" y="620" font-size="23" font-weight="750">Matched end-to-end latency</text>
+<text x="1360" y="620" text-anchor="end" class="small">Same real PCM tensor, checkpoint, software, GPU, duration, and codebook count.</text>
+
+<line x1="405" y1="650" x2="405" y2="840" stroke="#e4e9f0"/>
+<text class="axis" x="405" y="864" text-anchor="middle">0 ms</text>
+<line x1="690" y1="650" x2="690" y2="840" stroke="#e4e9f0"/>
+<text class="axis" x="690" y="864" text-anchor="middle">5 ms</text>
+<line x1="975" y1="650" x2="975" y2="840" stroke="#e4e9f0"/>
+<text class="axis" x="975" y="864" text-anchor="middle">10 ms</text>
+<line x1="1260" y1="650" x2="1260" y2="840" stroke="#e4e9f0"/>
+<text class="axis" x="1260" y="864" text-anchor="middle">15 ms</text>
+
+<text x="385" y="680" text-anchor="end" font-size="13">Transformers reference</text>
+<rect x="405" y="661" width="884.0" height="28" fill="#5c7cfa" opacity="0.72"/>
+<text class="value" x="1300" y="681" fill="#5c7cfa">15.508 ms</text>
+<text x="385" y="726" text-anchor="end" font-size="13">fast-kernel native</text>
+<rect x="405" y="707" width="588.2" height="28" fill="#17a879" opacity="0.72"/>
+<text class="value" x="1004" y="727" fill="#17a879">10.320 ms</text>
+<text x="385" y="772" text-anchor="end" font-size="13">Fast-Mimi functional FP32</text>
+<rect x="405" y="753" width="570.6" height="28" fill="#168e9e" opacity="0.72"/>
+<text class="value" x="987" y="773" fill="#168e9e">10.010 ms</text>
+<text x="385" y="818" text-anchor="end" font-size="13">Fast-Mimi guarded SM120</text>
+<rect x="405" y="799" width="323.5" height="28" fill="#168e9e" opacity="0.88"/>
+<text class="value" x="740" y="819" fill="#168e9e">5.675 ms</text>
+
+<text class="small" x="720" y="891" text-anchor="middle">Click the chart in README for interactive details and the technique-level comparison.</text>
 </svg>

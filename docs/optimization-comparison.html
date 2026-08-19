@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mimi Model Optimization Comparison</title>
+  <title>Mimi Matched Real-Speech Optimization Comparison</title>
   <style>
     html { color-scheme: light dark; }
     body { margin: 0; min-width: 320px; background: light-dark(#ffffff, #0b1020); }
   </style>
 </head>
 <body>
-<div id="mimi-opt-autokernel-comparison">
+<main id="mimi-real-comparison">
   <style>
-    #mimi-opt-autokernel-comparison {
+    #mimi-real-comparison {
       color-scheme: light dark;
       --foreground: light-dark(#172033, #e8edf7);
       --border: light-dark(#d9e0ea, #354056);
@@ -24,69 +24,39 @@
       --viz-series-4: light-dark(#5c7cfa, #88a0ff);
       --viz-series-5: light-dark(#8b5cf6, #ab8cff);
       --viz-series-6: light-dark(#168e9e, #4fc3d2);
-      --fk-phase-opacity: 0.075;
-      --fk-muted-opacity: 0.52;
       width: 100%;
-      max-width: 1560px;
+      max-width: 1420px;
       margin: 0 auto;
-      padding: 20px 18px 30px;
+      padding: 22px 18px 34px;
       box-sizing: border-box;
       color: var(--foreground);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    #mimi-opt-autokernel-comparison * {
-      box-sizing: border-box;
-    }
-
-    #mimi-opt-autokernel-comparison .hero {
-      text-align: center;
-      margin-bottom: 8px;
-    }
-
-    #mimi-opt-autokernel-comparison h1,
-    #mimi-opt-autokernel-comparison h2 {
-      margin: 0;
-      color: var(--foreground);
-      letter-spacing: -0.025em;
-    }
-
-    #mimi-opt-autokernel-comparison h1 {
-      font-size: clamp(23px, 3vw, 36px);
-      line-height: 1.15;
-      font-weight: 760;
-    }
-
-    #mimi-opt-autokernel-comparison h2 {
-      font-size: clamp(17px, 2vw, 23px);
-      line-height: 1.25;
-      font-weight: 720;
-      text-align: left;
-    }
-
-    #mimi-opt-autokernel-comparison .summary {
-      margin-top: 12px;
+    #mimi-real-comparison * { box-sizing: border-box; }
+    #mimi-real-comparison header { text-align: center; margin-bottom: 10px; }
+    #mimi-real-comparison h1,
+    #mimi-real-comparison h2 { margin: 0; color: var(--foreground); letter-spacing: -0.025em; }
+    #mimi-real-comparison h1 { font-size: clamp(23px, 3vw, 36px); font-weight: 760; }
+    #mimi-real-comparison h2 { font-size: clamp(17px, 2vw, 23px); font-weight: 720; }
+    #mimi-real-comparison .summary {
+      margin-top: 11px;
       color: color-mix(in srgb, var(--foreground) 68%, transparent);
       font-size: clamp(12px, 1.45vw, 16px);
       font-variant-numeric: tabular-nums;
     }
-
-    #mimi-opt-autokernel-comparison .legend {
+    #mimi-real-comparison .legend {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      align-items: center;
-      gap: 5px 16px;
-      margin: 13px auto 2px;
-      min-height: 28px;
+      gap: 5px 17px;
+      margin: 14px auto 4px;
       font-size: 12px;
     }
-
-    #mimi-opt-autokernel-comparison .legend button {
+    #mimi-real-comparison .legend button {
       appearance: none;
       border: 0;
       padding: 3px 0;
-      margin: 0;
       background: transparent;
       color: var(--foreground);
       font: inherit;
@@ -94,94 +64,78 @@
       display: inline-flex;
       align-items: center;
       gap: 7px;
-      opacity: 0.96;
     }
-
-    #mimi-opt-autokernel-comparison .legend button[aria-pressed="false"] {
-      opacity: 0.38;
+    #mimi-real-comparison .legend button[aria-pressed="false"] {
+      opacity: 0.36;
       text-decoration: line-through;
     }
-
-    #mimi-opt-autokernel-comparison .swatch {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      flex: 0 0 auto;
+    #mimi-real-comparison .swatch { width: 10px; height: 10px; border-radius: 50%; }
+    #mimi-real-comparison .swatch.reference { background: var(--viz-series-4); }
+    #mimi-real-comparison .swatch.fast-kernel { background: var(--viz-series-1); }
+    #mimi-real-comparison .swatch.fast-mimi { background: var(--viz-series-6); }
+    #mimi-real-comparison .chart-host { width: 100%; min-height: 500px; }
+    #mimi-real-comparison .latency-host { width: 100%; min-height: 300px; }
+    #mimi-real-comparison svg { display: block; width: 100%; overflow: visible; }
+    #mimi-real-comparison svg text { fill: var(--foreground); font-family: inherit; font-size: 12px; }
+    #mimi-real-comparison svg .axis text { opacity: 0.72; }
+    #mimi-real-comparison svg .axis path,
+    #mimi-real-comparison svg .axis line { stroke: var(--border); }
+    #mimi-real-comparison svg .axis-title { font-size: 13px; font-weight: 630; }
+    #mimi-real-comparison section {
+      margin-top: 28px;
+      padding-top: 23px;
+      border-top: 1px solid var(--border);
     }
-
-    #mimi-opt-autokernel-comparison .swatch.kept {
-      border-radius: 50%;
-      background: var(--viz-series-1);
+    #mimi-real-comparison .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 10px;
     }
-
-    #mimi-opt-autokernel-comparison .swatch.discarded {
-      border-radius: 50%;
-      background: var(--border);
-    }
-
-    #mimi-opt-autokernel-comparison .swatch.gate {
-      transform: rotate(45deg) scale(0.78);
-      border: 2px solid var(--viz-series-3);
-    }
-
-    #mimi-opt-autokernel-comparison .swatch.crash {
-      position: relative;
-      width: 12px;
-      background: linear-gradient(45deg, transparent 42%, var(--viz-series-2) 42% 58%, transparent 58%),
-        linear-gradient(-45deg, transparent 42%, var(--viz-series-2) 42% 58%, transparent 58%);
-    }
-
-    #mimi-opt-autokernel-comparison .swatch.frontier {
-      width: 17px;
-      height: 3px;
-      background: var(--viz-series-1);
-    }
-
-    #mimi-opt-autokernel-comparison .swatch.baseline {
-      width: 17px;
-      height: 0;
-      border-top: 2px dashed var(--viz-series-4);
-    }
-
-    #mimi-opt-autokernel-comparison .chart-host {
-      position: relative;
-      width: 100%;
-      min-height: 520px;
-    }
-
-    #mimi-opt-autokernel-comparison .chart-host svg,
-    #mimi-opt-autokernel-comparison .speedup-host svg {
-      display: block;
-      width: 100%;
-      overflow: visible;
-    }
-
-    #mimi-opt-autokernel-comparison svg text {
-      fill: var(--foreground);
-      font-family: inherit;
+    #mimi-real-comparison .section-note {
+      color: color-mix(in srgb, var(--foreground) 62%, transparent);
       font-size: 12px;
+      text-align: right;
     }
-
-    #mimi-opt-autokernel-comparison svg .axis text {
-      fill: var(--foreground);
-      opacity: 0.72;
-      font-size: 12px;
-    }
-
-    #mimi-opt-autokernel-comparison svg .axis path,
-    #mimi-opt-autokernel-comparison svg .axis line {
-      stroke: var(--border);
-    }
-
-    #mimi-opt-autokernel-comparison svg .axis-title {
-      fill: var(--foreground);
+    #mimi-real-comparison .matrix-wrap { overflow-x: auto; margin-top: 13px; }
+    #mimi-real-comparison table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+      table-layout: fixed;
       font-size: 13px;
-      font-weight: 620;
+      line-height: 1.42;
     }
-
-    #mimi-opt-autokernel-comparison .tooltip {
+    #mimi-real-comparison th,
+    #mimi-real-comparison td {
+      padding: 11px 12px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--border);
+    }
+    #mimi-real-comparison thead th {
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 720;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+    #mimi-real-comparison th:first-child,
+    #mimi-real-comparison td:first-child {
+      width: 20%;
+      color: color-mix(in srgb, var(--foreground) 68%, transparent);
+      font-weight: 640;
+    }
+    #mimi-real-comparison .shared-line {
+      margin-top: 13px;
+      color: color-mix(in srgb, var(--foreground) 65%, transparent);
+      font-size: 12px;
+      text-align: center;
+    }
+    #mimi-real-comparison .tooltip {
       position: absolute;
-      z-index: 20;
+      z-index: 10;
       display: none;
       max-width: min(340px, calc(100% - 24px));
       padding: 9px 11px;
@@ -189,811 +143,246 @@
       background: var(--popover);
       color: var(--popover-foreground);
       font-size: 12px;
-      line-height: 1.38;
+      line-height: 1.4;
       pointer-events: none;
       box-shadow: 0 8px 24px color-mix(in srgb, var(--foreground) 14%, transparent);
     }
-
-    #mimi-opt-autokernel-comparison .tooltip strong {
-      display: block;
-      margin-bottom: 3px;
-      font-size: 12px;
-    }
-
-    #mimi-opt-autokernel-comparison .tooltip .tip-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 18px;
-      font-variant-numeric: tabular-nums;
-    }
-
-    #mimi-opt-autokernel-comparison .tooltip .tip-row span:first-child {
-      opacity: 0.68;
-    }
-
-    #mimi-opt-autokernel-comparison .section {
-      margin-top: 30px;
-      padding-top: 24px;
-      border-top: 1px solid var(--border);
-    }
-
-    #mimi-opt-autokernel-comparison .section-head {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 10px;
-    }
-
-    #mimi-opt-autokernel-comparison .section-note {
-      color: color-mix(in srgb, var(--foreground) 62%, transparent);
-      font-size: 12px;
-      text-align: right;
-    }
-
-    #mimi-opt-autokernel-comparison .speedup-host {
-      width: 100%;
-      min-height: 250px;
-    }
-
-    #mimi-opt-autokernel-comparison .matrix-wrap {
-      overflow-x: auto;
-      margin-top: 14px;
-    }
-
-    #mimi-opt-autokernel-comparison table {
-      width: 100%;
-      min-width: 720px;
-      border-collapse: collapse;
-      table-layout: fixed;
-      color: var(--foreground);
-      font-size: 13px;
-      line-height: 1.42;
-    }
-
-    #mimi-opt-autokernel-comparison th,
-    #mimi-opt-autokernel-comparison td {
-      padding: 11px 12px;
-      text-align: left;
-      vertical-align: top;
-      border-bottom: 1px solid var(--border);
-    }
-
-    #mimi-opt-autokernel-comparison thead th {
-      border-top: 1px solid var(--border);
-      font-size: 12px;
-      font-weight: 720;
-      letter-spacing: 0.025em;
-      text-transform: uppercase;
-    }
-
-    #mimi-opt-autokernel-comparison th:first-child,
-    #mimi-opt-autokernel-comparison td:first-child {
-      width: 20%;
-      color: color-mix(in srgb, var(--foreground) 68%, transparent);
-      font-weight: 640;
-    }
-
-    #mimi-opt-autokernel-comparison .accepted {
-      color: var(--viz-series-1);
-      font-weight: 680;
-    }
-
-    #mimi-opt-autokernel-comparison .rejected {
-      color: color-mix(in srgb, var(--foreground) 57%, transparent);
-    }
-
-    #mimi-opt-autokernel-comparison .shared-line {
-      margin-top: 13px;
-      color: color-mix(in srgb, var(--foreground) 65%, transparent);
-      font-size: 12px;
-      text-align: center;
-    }
-
+    #mimi-real-comparison .tip-row { display: flex; justify-content: space-between; gap: 18px; }
+    #mimi-real-comparison .tip-row span:first-child { opacity: 0.68; }
     @media (max-width: 620px) {
-      #mimi-opt-autokernel-comparison {
-        padding: 14px 8px 24px;
-      }
-
-      #mimi-opt-autokernel-comparison .summary {
-        line-height: 1.55;
-      }
-
-      #mimi-opt-autokernel-comparison .legend {
-        justify-content: flex-start;
-        gap: 3px 13px;
-      }
-
-      #mimi-opt-autokernel-comparison .chart-host {
-        min-height: 500px;
-      }
-
-      #mimi-opt-autokernel-comparison .section-head {
-        display: block;
-      }
-
-      #mimi-opt-autokernel-comparison .section-note {
-        margin-top: 5px;
-        text-align: left;
-      }
+      #mimi-real-comparison { padding: 14px 8px 26px; }
+      #mimi-real-comparison .legend { justify-content: flex-start; }
+      #mimi-real-comparison .section-head { display: block; }
+      #mimi-real-comparison .section-note { margin-top: 5px; text-align: left; }
     }
   </style>
 
-  <header class="hero">
-    <h1>Mimi Model Optimizasyonu · fast-kernel</h1>
-    <div class="summary">28 deneme &nbsp;|&nbsp; 8 kabul &nbsp;|&nbsp; 5,1507 → 1,7215 ms &nbsp;|&nbsp; dondurulmuş tabana göre 2,992×</div>
+  <header>
+    <h1>Mimi Optimizasyonu · Eş Gerçek Ses</h1>
+    <div class="summary">aynı 5 sn LibriSpeech crop’u &nbsp;|&nbsp; 8 codebook &nbsp;|&nbsp; 15,508 → 5,675 ms &nbsp;|&nbsp; Transformers tabanına göre 2,733×</div>
   </header>
 
   <div class="legend" aria-label="Grafik serileri">
-    <button type="button" data-toggle="kept" aria-pressed="true"><span class="swatch kept"></span>Kabul edildi</button>
-    <button type="button" data-toggle="discarded" aria-pressed="true"><span class="swatch discarded"></span>Reddedildi</button>
-    <button type="button" data-toggle="gate" aria-pressed="true"><span class="swatch gate"></span>Doğruluk kapısı</button>
-    <button type="button" data-toggle="crash" aria-pressed="true"><span class="swatch crash"></span>Çökme</button>
-    <button type="button" data-toggle="frontier" aria-pressed="true"><span class="swatch frontier"></span>En iyiye kadar</button>
-    <button type="button" data-toggle="baseline" aria-pressed="true"><span class="swatch baseline"></span>1,0× taban</button>
+    <button type="button" data-toggle="reference" aria-pressed="true"><span class="swatch reference"></span>Transformers referansı</button>
+    <button type="button" data-toggle="fast-kernel" aria-pressed="true"><span class="swatch fast-kernel"></span>fast-kernel</button>
+    <button type="button" data-toggle="fast-mimi" aria-pressed="true"><span class="swatch fast-mimi"></span>Fast-Mimi</button>
   </div>
 
-  <div class="chart-host" id="mimi-campaign-chart" aria-label="28 fast-kernel denemesinin AutoKernel tarzında optimizasyon ilerleme grafiği"></div>
+  <div class="chart-host" id="matched-progress" aria-label="Eş gerçek ses üzerindeki AutoKernel tarzı uygulama ilerleme grafiği"></div>
 
-  <section class="section" aria-labelledby="speedup-title">
+  <section aria-labelledby="latency-title">
     <div class="section-head">
-      <h2 id="speedup-title">Kendi tabanına göre uçtan uca hızlanma</h2>
-      <div class="section-note">Ortak GPU; model, giriş uzunluğu ve ölçüm protokolü farklı — doğrudan yarış değildir.</div>
+      <h2 id="latency-title">Aynı iş yükünde ham gecikme</h2>
+      <div class="section-note">RTX 5070 Ti · PyTorch 2.13.0+cu130 · CUDA 13.0 · 50 dönüşümlü çift</div>
     </div>
-    <div class="speedup-host" id="mimi-speedup-chart" aria-label="fast-kernel ve fast-mimi depo içi hızlanma sonuçları"></div>
+    <div class="latency-host" id="matched-latency" aria-label="Aynı gerçek ses iş yükünde uygulama gecikmeleri"></div>
   </section>
 
-  <section class="section" aria-labelledby="technique-title">
+  <section aria-labelledby="technique-title">
     <div class="section-head">
-      <h2 id="technique-title">Optimizasyon tekniği karşılaştırması</h2>
-      <div class="section-note"><span class="accepted">● kabul edilen yol</span> &nbsp; <span class="rejected">○ denenmiş / reddedilmiş</span></div>
+      <h2 id="technique-title">Teknik ve sözleşme karşılaştırması</h2>
+      <div class="section-note">Yalnız eşlenmiş gerçek konuşma ölçümleri gösterilir.</div>
     </div>
     <div class="matrix-wrap">
-      <table aria-label="fast-kernel kampanyası ile fast-mimi üretim deposunun teknik karşılaştırması">
+      <table aria-label="Eş iş yükünde fast-kernel ve Fast-Mimi karşılaştırması">
         <thead>
-          <tr>
-            <th>Kapsam</th>
-            <th>fast-kernel kampanyası</th>
-            <th>fast-mimi deposu</th>
-          </tr>
+          <tr><th>Kapsam</th><th>fast-kernel native aday</th><th>Fast-Mimi SM120 üretim yolu</th></tr>
         </thead>
         <tbody>
-          <tr>
-            <td>Hedef model</td>
-            <td>Sentetik, küçük Mimi-style grafik; aynı modül ve ağırlıklara 139 satırlık adaptör.</td>
-            <td>Gerçek <code>kyutai/mimi</code> checkpoint’i; Transformers’sız bağımsız üretim runtime’ı.</td>
-          </tr>
-          <tr>
-            <td>Host / grafik</td>
-            <td><span class="accepted">●</span> ATen storage reuse → dispatch collapse → TorchScript RVQ/residual/conv → tüm forward CUDA Graph.</td>
-            <td><span class="accepted">●</span> Fonksiyonel runtime → aşama bazlı Inductor → segment ve fixed-pointer CUDA Graph.</td>
-          </tr>
-          <tr>
-            <td>GPU çekirdekleri</td>
-            <td><span class="rejected">○</span> Triton, Inductor ve cuDNN/layout denemeleri elendi; kabul edilen yol native ATen üzerinde kaldı.</td>
-            <td><span class="accepted">●</span> Triton + cuDNN Frontend + native CUDA/CUTLASS/WMMA çekirdekleri üretim yolunda.</td>
-          </tr>
-          <tr>
-            <td>CUDA Graph kapsamı</td>
-            <td><span class="accepted">●</span> Sabit şekil başına tek, bütün-forward replay; giriş kopyası ve taze çıktı clone’u çağrı içinde.</td>
-            <td><span class="accepted">●</span> Transformer/encoder/bottleneck/decoder segmentleri; 100 sn tam-forward graph denemesi daha yavaş olduğu için elendi.</td>
-          </tr>
-          <tr>
-            <td>Sayısal sözleşme</td>
-            <td>FP32; code stream birebir, sabit-input doğrulamasında ses maksimum mutlak hata 0.</td>
-            <td>Seçili FP16 dallar + FP32 residual/çıkış; 100 sn’de kod farkı 0, ses dondurulmuş tolerans içinde.</td>
-          </tr>
-          <tr>
-            <td>Şekil / taşınabilirlik</td>
-            <td>Şekil anahtarlı graph cache; ölçülen ana giriş <code>[1,1,8192]</code> = 0,341 sn ses.</td>
-            <td>SM120’de 5/10/100 sn özel yollar; diğer şekil, CPU ve GPU’larda saf PyTorch fallback.</td>
-          </tr>
-          <tr>
-            <td>En güçlü taraf</td>
-            <td>Az hesaplı, launch/dispatch-bound sabit grafikte düşük ek kodla yüksek kazanç.</td>
-            <td>Gerçek checkpoint ve uzun seslerde daha geniş, donanıma özel üretim optimizasyonu.</td>
-          </tr>
+          <tr><td>Model</td><td colspan="2"><code>kyutai/mimi</code> · revision <code>89091b3e…</code> · aynı dondurulmuş FP32 ağırlıklar</td></tr>
+          <tr><td>Giriş</td><td colspan="2">LibriSpeech <code>1272-128104-0004</code> · SHA-256 <code>07244790…c5404</code> · 10,48 sn konumundan 120.000 örnek</td></tr>
+          <tr><td>Codec sözleşmesi</td><td colspan="2">24 kHz · mono · tam 5 sn · 8 codebook · inference-only</td></tr>
+          <tr><td>Referans → aday</td><td>Transformers 15,508 → native fonksiyonel 10,320 ms</td><td>Bağımsız PureTorch 10,010 → guarded SM120 5,675 ms</td></tr>
+          <tr><td>Kendi tabanına göre</td><td><strong>1,5012×</strong> eşlenik medyan</td><td><strong>1,7786×</strong> · %95 eşlenik GA 1,7581×–1,7992×</td></tr>
+          <tr><td>Doğrudan aday oranı</td><td colspan="2">Fast-Mimi 5,675 ms / fast-kernel 10,320 ms: <strong>1,8184×</strong> daha düşük gecikme</td></tr>
+          <tr><td>Host / graph</td><td>Transformers’sız native fonksiyonel PyTorch aday</td><td>Inductor + segment/fixed-pointer CUDA Graph</td></tr>
+          <tr><td>GPU çekirdekleri</td><td>ATen/cuDNN SDPA ve native PyTorch operatörleri</td><td>Triton + cuDNN Frontend + CUDA/CUTLASS/WMMA; kısa yolda exact FP32 decoder</td></tr>
+          <tr><td>Çıktı kanıtı</td><td colspan="2">Kod SHA-256 <code>6cea0662…26ec</code> ve dalga SHA-256 <code>3de82c42…9840</code> byte-byte aynı; kod farkı 0, dalga ihlali 0</td></tr>
         </tbody>
       </table>
     </div>
-    <div class="shared-line">Ortak yaklaşım: sabit doğruluk sözleşmesi · ölçüm içi giriş/çıkış hareketi · warmup sonrası zamanlama · başarısız denemeleri üretim yolundan çıkarma</div>
-    <div class="shared-line">Kaynak: fast-kernel run <code>602a392e911a483a8f9d402e6c03260d</code> · fast-mimi <code>641d989</code> · görsel düzen referansı: <a href="https://github.com/RightNow-AI/autokernel/blob/main/progress.png">AutoKernel progress.png</a></div>
+    <div class="shared-line">Bütün yöntemler aynı GPU, yazılım sürümü, checkpoint, gerçek PCM tensoru, süre ve codebook sayısıyla ölçüldü.</div>
+    <div class="shared-line">Görsel düzen referansı: <a href="https://github.com/RightNow-AI/autokernel/blob/main/progress.png">AutoKernel progress.png</a></div>
   </section>
 
-  <div class="tooltip" role="tooltip" id="mimi-opt-tooltip"></div>
+  <div class="tooltip" role="tooltip" id="matched-tooltip"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
   <script>
     (() => {
-      const root = document.getElementById("mimi-opt-autokernel-comparison");
-      const campaignHost = document.getElementById("mimi-campaign-chart");
-      const speedupHost = document.getElementById("mimi-speedup-chart");
-      const tooltip = document.getElementById("mimi-opt-tooltip");
-      const frozenBaseline = 5.150704;
-
-      const attempts = [
-        { n: 0, state: "baseline", latency: 5.150704, label: "Dondurulmuş taban" },
-        { n: 1, state: "discarded", latency: 5.214707, label: "Triton tiled layout" },
-        { n: 2, state: "gate", latency: null, label: "Triton LayerNorm + ELU fusion" },
-        { n: 3, state: "discarded", latency: 8.902942, label: "Inductor decoder fragments" },
-        { n: 4, state: "gate", latency: null, label: "cuDNN measured tactics" },
-        { n: 5, state: "kept", latency: 5.0748895, label: "ATen storage reuse" },
-        { n: 6, state: "kept", latency: 4.9090115, label: "Direct LayerNorm dispatch" },
-        { n: 7, state: "kept", latency: 4.842811, label: "Residual dispatch collapse" },
-        { n: 8, state: "discarded", latency: 4.927185, label: "Resampling dispatch collapse" },
-        { n: 9, state: "discarded", latency: 5.1351405, label: "RVQ storage reuse" },
-        { n: 10, state: "discarded", latency: 4.822939, label: "Identity-affine LayerNorm elision" },
-        { n: 11, state: "kept", latency: 4.5917825, label: "TorchScript RVQ loop" },
-        { n: 12, state: "discarded", latency: 4.59461, label: "Direct Conv1d dispatch" },
-        { n: 13, state: "discarded", latency: 4.5466915, label: "Prepare-time metadata binding" },
-        { n: 14, state: "discarded", latency: 4.8540665, label: "Codec graph dispatch collapse" },
-        { n: 15, state: "discarded", latency: 5.111291, label: "Direct native LayerNorm" },
-        { n: 16, state: "crash", latency: null, label: "Frozen tensor mutation" },
-        { n: 17, state: "discarded", latency: 5.3706685, label: "Triton ELU + layout" },
-        { n: 18, state: "discarded", latency: 4.8681885, label: "ATen OpOverload dispatch" },
-        { n: 19, state: "discarded", latency: 4.640498, label: "Codebook norm hoist" },
-        { n: 20, state: "kept", latency: 4.3997175, label: "TorchScript residual unit" },
-        { n: 21, state: "discarded", latency: 4.2897195, label: "TorchScript transformer loop" },
-        { n: 22, state: "kept", latency: 4.1024245, label: "TorchScript residual block" },
-        { n: 23, state: "kept", latency: 3.6269015, label: "TorchScript convolutional stacks" },
-        { n: 24, state: "discarded", latency: 4.4239175, label: "Repeated residual-unit script" },
-        { n: 25, state: "discarded", latency: 3.8053055, label: "Repeated conv-stack script" },
-        { n: 26, state: "kept", latency: 1.721453, label: "Whole-forward CUDA Graph" },
-        { n: 27, state: "discarded", latency: 1.710616, label: "Channels-last residual region" },
-        { n: 28, state: "crash", latency: null, label: "Persistent NHWC attempt" }
-      ].map(d => ({ ...d, speedup: d.latency == null ? null : frozenBaseline / d.latency }));
-
-      const phases = [
-        { start: -0.45, end: 4.5, label: "Kernel / compiler probes", color: "var(--viz-series-4)" },
-        { start: 4.5, end: 16.5, label: "ATen & dispatch", color: "var(--viz-series-5)" },
-        { start: 16.5, end: 19.5, label: "Fusion / native probes", color: "var(--viz-series-3)" },
-        { start: 19.5, end: 25.5, label: "TorchScript regions", color: "var(--viz-series-6)" },
-        { start: 25.5, end: 28.45, label: "CUDA Graph / layout", color: "var(--viz-series-1)" }
-      ];
-
-      const visibility = {
-        kept: true,
-        discarded: true,
-        gate: true,
-        crash: true,
-        frontier: true,
-        baseline: true
-      };
-
-      const stateLabel = {
-        baseline: "Taban",
-        kept: "Kabul edildi",
-        discarded: "Reddedildi",
-        gate: "Doğruluk kapısında elendi",
-        crash: "Çöktü"
-      };
-
-      const formatMs = value => value.toLocaleString("tr-TR", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+      const root = document.getElementById("mimi-real-comparison");
+      const progressHost = document.getElementById("matched-progress");
+      const latencyHost = document.getElementById("matched-latency");
+      const tooltip = document.getElementById("matched-tooltip");
+      const baseline = 15.508211;
+      const methods = [
+        { n: 0, repo: "reference", label: "Transformers referansı", short: "TF ref", latency: 15.508211 },
+        { n: 1, repo: "fast-kernel", label: "fast-kernel native", short: "FK native", latency: 10.3196755 },
+        { n: 2, repo: "fast-mimi", label: "Fast-Mimi fonksiyonel FP32", short: "FM FP32", latency: 10.010291 },
+        { n: 3, repo: "fast-mimi", label: "Fast-Mimi guarded SM120", short: "FM SM120", latency: 5.675018 }
+      ].map(d => ({ ...d, speedup: baseline / d.latency }));
+      const visible = { reference: true, "fast-kernel": true, "fast-mimi": true };
+      const color = repo => repo === "reference"
+        ? "var(--viz-series-4)"
+        : repo === "fast-kernel" ? "var(--viz-series-1)" : "var(--viz-series-6)";
+      const formatMs = value => value.toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
       const formatSpeed = value => value.toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + "×";
 
-      let campaignSvg;
-      let speedupSvg;
-
-      function showTooltip(event, datum, frontierValue) {
-        const rows = [];
-        rows.push(`<strong>#${datum.n} · ${datum.label}</strong>`);
-        rows.push(`<div class="tip-row"><span>Karar</span><span>${stateLabel[datum.state]}</span></div>`);
-        if (datum.latency != null) {
-          rows.push(`<div class="tip-row"><span>Medyan gecikme</span><span>${formatMs(datum.latency)} ms</span></div>`);
-          rows.push(`<div class="tip-row"><span>Donmuş tabana göre</span><span>${formatSpeed(datum.speedup)}</span></div>`);
-        } else {
-          rows.push(`<div class="tip-row"><span>Zamanlama</span><span>geçerli örnek yok</span></div>`);
-        }
-        if (frontierValue != null) {
-          rows.push(`<div class="tip-row"><span>Kabul edilmiş frontier</span><span>${formatSpeed(frontierValue)}</span></div>`);
-        }
-        tooltip.innerHTML = rows.join("");
+      function showTooltip(event, datum) {
+        tooltip.innerHTML = `<strong>${datum.label}</strong>`
+          + `<div class="tip-row"><span>Medyan</span><span>${formatMs(datum.latency)} ms</span></div>`
+          + `<div class="tip-row"><span>Transformers tabanına göre</span><span>${formatSpeed(datum.speedup)}</span></div>`
+          + `<div class="tip-row"><span>Çıktı</span><span>byte-byte eş</span></div>`;
         tooltip.style.display = "block";
-        const rootRect = root.getBoundingClientRect();
-        const tipRect = tooltip.getBoundingClientRect();
-        let left = event.clientX - rootRect.left + 14;
-        let top = event.clientY - rootRect.top + 14;
-        if (left + tipRect.width > rootRect.width - 6) left = event.clientX - rootRect.left - tipRect.width - 14;
-        if (top + tipRect.height > rootRect.height - 6) top = event.clientY - rootRect.top - tipRect.height - 14;
+        const bounds = root.getBoundingClientRect();
+        const tip = tooltip.getBoundingClientRect();
+        let left = event.clientX - bounds.left + 14;
+        let top = event.clientY - bounds.top + 14;
+        if (left + tip.width > bounds.width - 6) left -= tip.width + 28;
+        if (top + tip.height > bounds.height - 6) top -= tip.height + 28;
         tooltip.style.left = `${Math.max(6, left)}px`;
         tooltip.style.top = `${Math.max(6, top)}px`;
       }
 
-      function hideTooltip() {
-        tooltip.style.display = "none";
-      }
+      function hideTooltip() { tooltip.style.display = "none"; }
 
-      function runningFrontier() {
-        let best = 1;
-        return attempts.map(d => {
-          if ((d.state === "kept" || d.state === "baseline") && d.speedup != null) {
-            best = Math.max(best, d.speedup);
-          }
-          return { n: d.n, speedup: best };
-        });
-      }
-
-      function drawCampaign() {
-        const width = Math.max(320, campaignHost.clientWidth || 900);
-        const height = width < 520 ? 500 : 570;
-        const margin = {
-          top: 54,
-          right: width < 520 ? 18 : 38,
-          bottom: 58,
-          left: width < 520 ? 62 : 78
-        };
+      function drawProgress() {
+        const width = Math.max(320, progressHost.clientWidth || 900);
+        const height = width < 560 ? 500 : 540;
+        const margin = { top: 45, right: width < 560 ? 22 : 48, bottom: 90, left: width < 560 ? 64 : 78 };
         const innerWidth = width - margin.left - margin.right;
         const innerHeight = height - margin.top - margin.bottom;
-
-        d3.select(campaignHost).selectAll("svg").remove();
-        campaignSvg = d3.select(campaignHost)
-          .append("svg")
+        d3.select(progressHost).selectAll("svg").remove();
+        const svg = d3.select(progressHost).append("svg")
           .attr("viewBox", `0 0 ${width} ${height}`)
           .attr("role", "img")
-          .attr("aria-labelledby", "campaign-svg-title campaign-svg-desc");
-
-        campaignSvg.append("title").attr("id", "campaign-svg-title").text("fast-kernel Mimi-style optimizasyon ilerlemesi");
-        campaignSvg.append("desc").attr("id", "campaign-svg-desc").text("Kabul edilen, reddedilen, doğruluk kapısında elenen ve çöken 28 deneme ile kabul edilmiş en iyi hızlanma çizgisi.");
-
-        const g = campaignSvg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-        const validValues = attempts.filter(d => d.speedup != null).map(d => d.speedup).concat([1]);
-        const yExtent = d3.extent(validValues);
-        const ySpan = yExtent[1] - yExtent[0];
-        const yDomain = [Math.max(0, yExtent[0] - ySpan * 0.13), yExtent[1] + ySpan * 0.13];
-        const xExtent = d3.extent(attempts, d => d.n);
-        const xPad = Math.max(0.7, (xExtent[1] - xExtent[0]) * 0.025);
-        const x = d3.scaleLinear().domain([xExtent[0] - xPad, xExtent[1] + xPad]).range([8, innerWidth - 8]);
-        const y = d3.scaleLinear().domain(yDomain).nice().range([innerHeight - 6, 8]);
-        const floorY = yDomain[0] + (yDomain[1] - yDomain[0]) * 0.045;
-
-        g.selectAll("rect.phase")
-          .data(phases)
-          .join("rect")
-          .attr("class", "phase")
-          .attr("x", d => x(d.start))
-          .attr("y", 0)
-          .attr("width", d => Math.max(0, x(d.end) - x(d.start)))
-          .attr("height", innerHeight)
-          .attr("fill", d => d.color)
-          .attr("opacity", "var(--fk-phase-opacity)");
-
-        const phaseLabel = g.selectAll("text.phase-label")
-          .data(phases)
-          .join("text")
-          .attr("class", "phase-label")
-          .attr("x", d => (x(d.start) + x(d.end)) / 2)
-          .attr("y", -25)
-          .attr("text-anchor", "middle")
-          .attr("font-weight", 720)
-          .attr("font-size", width < 720 ? 11 : 12)
-          .attr("fill", d => d.color)
-          .text(d => d.label);
-
-        if (width < 620) {
-          phaseLabel.each(function(d) {
-            const node = d3.select(this);
-            const words = d.label.split(" ");
-            node.text("");
-            node.append("tspan").attr("x", node.attr("x")).attr("dy", 0).text(words.slice(0, 2).join(" "));
-            if (words.length > 2) node.append("tspan").attr("x", node.attr("x")).attr("dy", 12).text(words.slice(2).join(" "));
-          });
-        }
-
-        const yTicks = y.ticks(width < 520 ? 5 : 7);
-        g.selectAll("line.grid")
-          .data(yTicks)
-          .join("line")
-          .attr("class", "grid")
-          .attr("x1", 0)
-          .attr("x2", innerWidth)
-          .attr("y1", d => y(d))
-          .attr("y2", d => y(d))
-          .attr("stroke", "var(--border)")
-          .attr("opacity", 0.52);
-
-        g.append("rect")
-          .attr("data-chart-frame", "true")
-          .attr("x", 0)
-          .attr("y", 0)
-          .attr("width", innerWidth)
-          .attr("height", innerHeight)
-          .attr("fill", "none")
-          .attr("stroke", "var(--border)")
-          .attr("stroke-width", 1);
-
-        const xAxis = d3.axisBottom(x)
-          .ticks(width < 440 ? 4 : width < 760 ? 7 : 10)
-          .tickFormat(d3.format("d"));
-        const yAxis = d3.axisLeft(y).ticks(width < 520 ? 5 : 7).tickFormat(d => `${d.toFixed(1)}×`);
-
-        g.append("g").attr("class", "axis").attr("transform", `translate(0,${innerHeight})`).call(xAxis);
-        g.append("g").attr("class", "axis").call(yAxis);
-
-        g.append("text")
-          .attr("class", "axis-title")
-          .attr("data-axis", "x")
-          .attr("x", innerWidth / 2)
-          .attr("y", innerHeight + 47)
-          .attr("text-anchor", "middle")
-          .text("Deneme #");
-
-        g.append("text")
-          .attr("class", "axis-title")
-          .attr("data-axis", "y")
-          .attr("transform", "rotate(-90)")
-          .attr("x", -innerHeight / 2)
-          .attr("y", -56)
-          .attr("text-anchor", "middle")
-          .text("Dondurulmuş tabana göre hızlanma (×)");
-
-        const baselineGroup = g.append("g").attr("data-series", "baseline");
-        baselineGroup.append("line")
-          .attr("x1", 0)
-          .attr("x2", innerWidth)
-          .attr("y1", y(1))
-          .attr("y2", y(1))
-          .attr("stroke", "var(--viz-series-4)")
-          .attr("stroke-width", 2)
-          .attr("stroke-dasharray", "7 5")
-          .attr("opacity", 0.78);
-        baselineGroup.append("text")
-          .attr("x", innerWidth - 7)
-          .attr("y", y(1) - 7)
-          .attr("text-anchor", "end")
-          .attr("fill", "var(--viz-series-4)")
-          .attr("font-weight", 670)
-          .text("Saf FP32 taban · 5,1507 ms");
-
-        const frontier = runningFrontier();
-        const frontierLine = d3.line()
-          .x(d => x(d.n))
-          .y(d => y(d.speedup))
-          .curve(d3.curveStepAfter);
-        g.append("path")
-          .datum(frontier)
-          .attr("data-series", "frontier")
-          .attr("d", frontierLine)
-          .attr("fill", "none")
-          .attr("stroke", "var(--viz-series-1)")
-          .attr("stroke-width", 3)
-          .attr("stroke-linejoin", "round")
-          .attr("opacity", 0.86);
-
-        const validDiscarded = attempts.filter(d => d.state === "discarded" && d.speedup != null);
-        g.append("g")
-          .attr("data-series", "discarded")
-          .selectAll("circle")
-          .data(validDiscarded)
-          .join("circle")
-          .attr("cx", d => x(d.n))
-          .attr("cy", d => y(d.speedup))
-          .attr("r", width < 520 ? 3.5 : 4.5)
-          .attr("fill", "var(--border)")
-          .attr("opacity", 0.84);
-
-        const baselinePoint = attempts[0];
-        g.append("circle")
-          .datum(baselinePoint)
-          .attr("cx", x(0))
-          .attr("cy", y(1))
-          .attr("r", 6)
-          .attr("fill", "var(--viz-series-4)")
-          .attr("stroke", "var(--foreground)")
-          .attr("stroke-width", 0.7);
-
-        const kept = attempts.filter(d => d.state === "kept");
-        g.append("g")
-          .attr("data-series", "kept")
-          .selectAll("circle")
-          .data(kept)
-          .join("circle")
-          .attr("cx", d => x(d.n))
-          .attr("cy", d => y(d.speedup))
-          .attr("r", width < 520 ? 5 : 6.5)
-          .attr("fill", "var(--viz-series-1)")
-          .attr("stroke", "var(--foreground)")
-          .attr("stroke-width", 0.65);
-
-        const gate = attempts.filter(d => d.state === "gate");
-        g.append("g")
-          .attr("data-series", "gate")
-          .selectAll("rect")
-          .data(gate)
-          .join("rect")
-          .attr("x", d => x(d.n) - 5)
-          .attr("y", y(floorY) - 5)
-          .attr("width", 10)
-          .attr("height", 10)
-          .attr("transform", d => `rotate(45 ${x(d.n)} ${y(floorY)})`)
-          .attr("fill", "none")
-          .attr("stroke", "var(--viz-series-3)")
-          .attr("stroke-width", 2);
-
-        const crashes = attempts.filter(d => d.state === "crash");
-        const crashGroup = g.append("g").attr("data-series", "crash");
-        const crashMark = crashGroup.selectAll("g")
-          .data(crashes)
-          .join("g")
-          .attr("transform", d => `translate(${x(d.n)},${y(floorY)})`);
-        crashMark.append("line").attr("x1", -5).attr("y1", -5).attr("x2", 5).attr("y2", 5).attr("stroke", "var(--viz-series-2)").attr("stroke-width", 2.5);
-        crashMark.append("line").attr("x1", 5).attr("y1", -5).attr("x2", -5).attr("y2", 5).attr("stroke", "var(--viz-series-2)").attr("stroke-width", 2.5);
-
-        const annotationData = width < 560
-          ? [attempts[26]]
-          : [attempts[5], attempts[11], attempts[20], attempts[23], attempts[26]];
-        const offsets = new Map([
-          [5, { dx: 10, dy: -23, anchor: "start" }],
-          [11, { dx: 10, dy: -18, anchor: "start" }],
-          [20, { dx: -8, dy: -22, anchor: "end" }],
-          [23, { dx: -8, dy: -23, anchor: "end" }],
-          [26, { dx: -8, dy: -27, anchor: "end" }]
-        ]);
-        const annotations = g.append("g").attr("data-series", "kept").selectAll("g.annotation")
-          .data(annotationData)
-          .join("g")
-          .attr("class", "annotation");
-        annotations.append("line")
-          .attr("x1", d => x(d.n))
-          .attr("y1", d => y(d.speedup) - 7)
-          .attr("x2", d => x(d.n) + offsets.get(d.n).dx * 0.7)
-          .attr("y2", d => y(d.speedup) + offsets.get(d.n).dy + 5)
-          .attr("stroke", "var(--viz-series-1)")
-          .attr("stroke-width", 1);
-        annotations.append("text")
-          .attr("x", d => x(d.n) + offsets.get(d.n).dx)
-          .attr("y", d => y(d.speedup) + offsets.get(d.n).dy)
-          .attr("text-anchor", d => offsets.get(d.n).anchor)
-          .attr("fill", "var(--viz-series-1)")
-          .attr("font-size", 11)
-          .attr("font-weight", 720)
-          .text(d => d.label);
-
-        const best = frontier[frontier.length - 1].speedup;
-        const endLabel = g.append("text")
-          .attr("data-series", "frontier")
-          .attr("x", innerWidth - 8)
-          .attr("y", y(best) + 22)
-          .attr("text-anchor", "end")
-          .attr("fill", "var(--viz-series-1)")
-          .attr("font-weight", 780)
-          .attr("font-size", width < 520 ? 12 : 14);
-        endLabel.append("tspan").attr("x", innerWidth - 8).text("2,992×");
-        endLabel.append("tspan").attr("x", innerWidth - 8).attr("dy", 15).text("1,7215 ms");
-
-        if (width >= 700) {
-          const stats = g.append("g").attr("transform", `translate(12,${innerHeight - 84})`);
-          stats.append("rect")
-            .attr("width", 356)
-            .attr("height", 70)
-            .attr("fill", "var(--popover)")
-            .attr("stroke", "var(--border)")
-            .attr("opacity", 0.93);
-          const statText = stats.append("text")
-            .attr("x", 10)
-            .attr("y", 18)
-            .attr("font-family", "ui-monospace, SFMono-Regular, Menlo, monospace")
-            .attr("font-size", 11);
-          statText.append("tspan").attr("x", 10).text("Mimi-style  ·  [1,1,8192] FP32  ·  8 codebook");
-          statText.append("tspan").attr("x", 10).attr("dy", 17).text("RTX 5070 Ti  ·  0,341 sn ses");
-          statText.append("tspan").attr("x", 10).attr("dy", 17).text("28 deneme  |  8 kabul  |  18 red  |  2 çökme");
-        }
-
-        const guide = g.append("line")
-          .attr("data-chart-hover-guide", "true")
-          .attr("y1", 0)
-          .attr("y2", innerHeight)
-          .attr("stroke", "var(--foreground)")
-          .attr("stroke-width", 1)
-          .attr("stroke-dasharray", "3 4")
-          .attr("opacity", 0);
-
-        const hoverMarker = g.append("circle")
-          .attr("data-chart-hover-marker", "true")
-          .attr("r", 7)
-          .attr("fill", "none")
-          .attr("stroke", "var(--foreground)")
-          .attr("stroke-width", 1.5)
-          .attr("opacity", 0);
-
-        const frontierBisector = d3.bisector(d => d.n).center;
-        g.append("rect")
-          .attr("data-chart-hit", "true")
-          .attr("data-chart-hover-overlay", "cross-series")
-          .attr("x", 0)
-          .attr("y", 0)
-          .attr("width", innerWidth)
-          .attr("height", innerHeight)
-          .attr("fill", "transparent")
-          .style("cursor", "crosshair")
-          .on("pointermove", function(event) {
-            const [pointerX] = d3.pointer(event, this);
-            const exactN = x.invert(pointerX);
-            const index = d3.bisector(d => d.n).center(attempts, exactN);
-            const datum = attempts[index];
-            const frontierIndex = frontierBisector(frontier, exactN);
-            const frontierValue = frontier[frontierIndex].speedup;
-            guide.attr("x1", pointerX).attr("x2", pointerX).attr("opacity", 0.48);
-            const markerY = datum.speedup == null ? y(floorY) : y(datum.speedup);
-            hoverMarker.attr("cx", x(datum.n)).attr("cy", markerY).attr("opacity", 0.8);
-            showTooltip(event, datum, frontierValue);
-          })
-          .on("pointerleave", () => {
-            guide.attr("opacity", 0);
-            hoverMarker.attr("opacity", 0);
-            hideTooltip();
-          });
-
+          .attr("aria-labelledby", "progress-title progress-desc");
+        svg.append("title").attr("id", "progress-title").text("Eş gerçek ses üzerinde Mimi uygulama ilerlemesi");
+        svg.append("desc").attr("id", "progress-desc").text("Aynı beş saniyelik gerçek konuşma ve sekiz codebook için dört bit-eş uygulamanın Transformers tabanına göre hızlanması.");
+        const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+        const x = d3.scaleLinear().domain([-0.18, 3.18]).range([8, innerWidth - 8]);
+        const extent = d3.extent(methods, d => d.speedup);
+        const span = extent[1] - extent[0];
+        const y = d3.scaleLinear().domain([extent[0] - span * 0.12, extent[1] + span * 0.16]).nice().range([innerHeight - 5, 5]);
+        const ticks = y.ticks(width < 520 ? 5 : 7);
+        g.selectAll("line.grid").data(ticks).join("line")
+          .attr("x1", 0).attr("x2", innerWidth).attr("y1", d => y(d)).attr("y2", d => y(d))
+          .attr("stroke", "var(--border)").attr("opacity", 0.5);
+        g.append("rect").attr("data-chart-frame", "true").attr("width", innerWidth).attr("height", innerHeight)
+          .attr("fill", "none").attr("stroke", "var(--border)");
+        g.append("line").attr("x1", 0).attr("x2", innerWidth).attr("y1", y(1)).attr("y2", y(1))
+          .attr("stroke", "var(--viz-series-4)").attr("stroke-width", 2).attr("stroke-dasharray", "7 5");
+        g.append("g").attr("class", "axis").call(d3.axisLeft(y).ticks(width < 520 ? 5 : 7).tickFormat(d => `${d.toFixed(1)}×`));
+        g.append("g").attr("class", "axis").attr("transform", `translate(0,${innerHeight})`)
+          .call(d3.axisBottom(x).tickValues(methods.map(d => d.n)).tickFormat(d => `#${d}`));
+        g.append("text").attr("class", "axis-title").attr("data-axis", "x").attr("x", innerWidth / 2)
+          .attr("y", innerHeight + 78).attr("text-anchor", "middle").text("Eşlenmiş uygulama aşaması");
+        g.append("text").attr("class", "axis-title").attr("data-axis", "y").attr("transform", "rotate(-90)")
+          .attr("x", -innerHeight / 2).attr("y", -54).attr("text-anchor", "middle").text("Transformers tabanına göre hızlanma (×)");
+        const step = d3.line().x(d => x(d.n)).y(d => y(d.speedup)).curve(d3.curveStepAfter);
+        g.append("path").datum(methods).attr("d", step).attr("fill", "none")
+          .attr("stroke", "var(--viz-series-1)").attr("stroke-width", 3.5).attr("opacity", 0.72);
+        const marks = g.selectAll("g.mark").data(methods).join("g")
+          .attr("class", "mark").attr("data-repo", d => d.repo)
+          .attr("transform", d => `translate(${x(d.n)},${y(d.speedup)})`);
+        marks.append("circle").attr("r", 7).attr("fill", d => color(d.repo))
+          .attr("stroke", "var(--foreground)").attr("stroke-width", 0.8);
+        marks.append("circle").attr("data-chart-hit", "true").attr("r", 18).attr("fill", "transparent")
+          .style("cursor", "crosshair").on("pointermove", showTooltip).on("pointerleave", hideTooltip);
+        marks.append("text").attr("x", d => d.n === 3 ? -10 : 10).attr("y", -12)
+          .attr("text-anchor", d => d.n === 3 ? "end" : "start").attr("font-weight", 760)
+          .attr("fill", d => color(d.repo)).text(d => formatSpeed(d.speedup));
+        marks.append("text").attr("x", d => d.n === 3 ? -10 : 10).attr("y", 4)
+          .attr("text-anchor", d => d.n === 3 ? "end" : "start").attr("font-size", 11)
+          .text(d => `${formatMs(d.latency)} ms`);
+        const labels = g.selectAll("text.method-label").data(methods).join("text")
+          .attr("class", "method-label").attr("data-repo", d => d.repo).attr("x", d => x(d.n))
+          .attr("y", innerHeight + 51).attr("text-anchor", "middle").attr("font-size", width < 600 ? 10 : 12)
+          .text(d => width < 600 ? d.short : d.label);
+        const stats = g.append("g").attr("transform", `translate(10,${innerHeight - 66})`);
+        stats.append("rect").attr("width", Math.min(520, innerWidth - 20)).attr("height", 54)
+          .attr("fill", "var(--popover)").attr("stroke", "var(--border)").attr("opacity", 0.94);
+        const statText = stats.append("text").attr("x", 10).attr("y", 18)
+          .attr("font-family", "ui-monospace, SFMono-Regular, Menlo, monospace").attr("font-size", 11);
+        statText.append("tspan").attr("x", 10).text(
+          width < 600
+            ? "LibriSpeech 1272-128104-0004"
+            : "LibriSpeech 1272-128104-0004 · crop 10,48–15,48 sn"
+        );
+        statText.append("tspan").attr("x", 10).attr("dy", 17).text(
+          width < 600
+            ? "5 sn · 24 kHz · 8 codebook · SHA eş"
+            : "120.000 FP32 PCM · 24 kHz mono · 8 codebook · output SHA eş"
+        );
         applyVisibility();
       }
 
-      const speedupData = [
-        { label: "fast-kernel · sentetik 0,341 sn giriş", value: 2.9921, repo: "fast-kernel", detail: "5,1507 → 1,7215 ms" },
-        { label: "fast-mimi · gerçek 5 sn giriş", value: 1.8251, repo: "fast-mimi", detail: "10,033 → 5,497 ms" },
-        { label: "fast-mimi · gerçek 10 sn giriş", value: 1.3631, repo: "fast-mimi", detail: "12,644 → 9,276 ms" },
-        { label: "fast-mimi · gerçek 100 sn giriş", value: 2.2669, repo: "fast-mimi", detail: "133,561 → 58,916 ms" }
-      ];
-
-      function drawSpeedups() {
-        const width = Math.max(320, speedupHost.clientWidth || 900);
-        const height = width < 560 ? 300 : 250;
-        const margin = {
-          top: 16,
-          right: width < 560 ? 60 : 105,
-          bottom: 46,
-          left: width < 560 ? 24 : 265
-        };
+      function drawLatency() {
+        const width = Math.max(320, latencyHost.clientWidth || 900);
+        const height = width < 560 ? 340 : 300;
+        const margin = { top: 14, right: 72, bottom: 48, left: width < 560 ? 24 : 230 };
         const innerWidth = width - margin.left - margin.right;
         const innerHeight = height - margin.top - margin.bottom;
-
-        d3.select(speedupHost).selectAll("svg").remove();
-        speedupSvg = d3.select(speedupHost)
-          .append("svg")
-          .attr("viewBox", `0 0 ${width} ${height}`)
-          .attr("role", "img")
-          .attr("aria-labelledby", "speedup-svg-title speedup-svg-desc");
-        speedupSvg.append("title").attr("id", "speedup-svg-title").text("Depo içi hızlanma sonuçları");
-        speedupSvg.append("desc").attr("id", "speedup-svg-desc").text("Farklı model ve giriş sözleşmelerinin yalnız kendi tabanlarına göre hızlanmaları.");
-
-        const g = speedupSvg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-        const valueExtent = d3.extent(speedupData, d => d.value);
-        const xSpan = valueExtent[1] - 1;
-        const x = d3.scaleLinear()
-          .domain([Math.max(0, 1 - xSpan * 0.08), valueExtent[1] + xSpan * 0.14])
-          .nice()
-          .range([4, innerWidth - 4]);
-        const y = d3.scaleBand()
-          .domain(speedupData.map(d => d.label))
-          .range([0, innerHeight])
-          .padding(0.42);
-
-        const xTicks = x.ticks(width < 520 ? 4 : 6);
-        g.selectAll("line.grid")
-          .data(xTicks)
-          .join("line")
-          .attr("x1", d => x(d))
-          .attr("x2", d => x(d))
-          .attr("y1", 0)
-          .attr("y2", innerHeight)
-          .attr("stroke", "var(--border)")
-          .attr("opacity", 0.45);
-
-        g.append("rect")
-          .attr("data-chart-frame", "true")
-          .attr("x", 0)
-          .attr("y", 0)
-          .attr("width", innerWidth)
-          .attr("height", innerHeight)
-          .attr("fill", "none")
-          .attr("stroke", "var(--border)");
-
-        g.append("line")
-          .attr("x1", x(1))
-          .attr("x2", x(1))
-          .attr("y1", 0)
-          .attr("y2", innerHeight)
-          .attr("stroke", "var(--viz-series-4)")
-          .attr("stroke-width", 2)
-          .attr("stroke-dasharray", "6 5");
-
-        const row = g.selectAll("g.result-row")
-          .data(speedupData)
-          .join("g")
-          .attr("class", "result-row")
-          .attr("transform", d => `translate(0,${y(d.label) + y.bandwidth() / 2})`);
-
-        row.append("line")
-          .attr("x1", x(1))
-          .attr("x2", d => x(d.value))
-          .attr("stroke", d => d.repo === "fast-kernel" ? "var(--viz-series-1)" : "var(--viz-series-6)")
-          .attr("stroke-width", 4)
-          .attr("opacity", 0.65);
-
-        row.append("circle")
-          .attr("cx", d => x(d.value))
-          .attr("r", 6.5)
-          .attr("fill", d => d.repo === "fast-kernel" ? "var(--viz-series-1)" : "var(--viz-series-6)")
-          .attr("stroke", "var(--foreground)")
-          .attr("stroke-width", 0.7);
-
-        row.append("text")
-          .attr("x", d => x(d.value) + 11)
-          .attr("y", -2)
-          .attr("font-weight", 760)
-          .attr("fill", d => d.repo === "fast-kernel" ? "var(--viz-series-1)" : "var(--viz-series-6)")
-          .text(d => `${d.value.toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}×`);
-
-        row.append("text")
-          .attr("x", d => x(d.value) + 11)
-          .attr("y", 12)
-          .attr("font-size", 11)
-          .attr("opacity", 0.66)
-          .text(d => d.detail);
-
+        d3.select(latencyHost).selectAll("svg").remove();
+        const svg = d3.select(latencyHost).append("svg").attr("viewBox", `0 0 ${width} ${height}`)
+          .attr("role", "img").attr("aria-labelledby", "latency-svg-title latency-svg-desc");
+        svg.append("title").attr("id", "latency-svg-title").text("Eş gerçek ses gecikmeleri");
+        svg.append("desc").attr("id", "latency-svg-desc").text("Dört bit-eş Mimi uygulamasının aynı beş saniyelik gerçek konuşmadaki medyan gecikmesi.");
+        const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+        const maxLatency = d3.max(methods, d => d.latency);
+        const x = d3.scaleLinear().domain([0, maxLatency * 1.13]).nice().range([0, innerWidth]);
+        const y = d3.scaleBand().domain(methods.map(d => d.label)).range([0, innerHeight]).padding(0.36);
+        g.selectAll("line.grid").data(x.ticks(width < 520 ? 4 : 6)).join("line")
+          .attr("x1", d => x(d)).attr("x2", d => x(d)).attr("y1", 0).attr("y2", innerHeight)
+          .attr("stroke", "var(--border)").attr("opacity", 0.45);
+        g.append("rect").attr("data-chart-frame", "true").attr("width", innerWidth).attr("height", innerHeight)
+          .attr("fill", "none").attr("stroke", "var(--border)");
+        const rows = g.selectAll("g.row").data(methods).join("g").attr("class", "row")
+          .attr("data-repo", d => d.repo).attr("transform", d => `translate(0,${y(d.label)})`);
+        rows.append("rect").attr("width", d => x(d.latency)).attr("height", y.bandwidth())
+          .attr("fill", d => color(d.repo)).attr("opacity", 0.7);
+        rows.append("text").attr("x", d => x(d.latency) + 9).attr("y", y.bandwidth() / 2 + 4)
+          .attr("font-weight", 750).attr("fill", d => color(d.repo)).text(d => `${formatMs(d.latency)} ms`);
         if (width >= 560) {
-          row.append("text")
-            .attr("x", -12)
-            .attr("y", 4)
-            .attr("text-anchor", "end")
-            .attr("font-size", 12)
-            .text(d => d.label);
+          rows.append("text").attr("x", -12).attr("y", y.bandwidth() / 2 + 4)
+            .attr("text-anchor", "end").text(d => d.label);
         } else {
-          row.append("text")
-            .attr("x", 7)
-            .attr("y", -13)
-            .attr("font-size", 11)
-            .text(d => d.label.replace(" · ", " · "));
+          rows.append("text").attr("x", 7).attr("y", -5).attr("font-size", 10).text(d => d.label);
         }
-
-        g.append("g")
-          .attr("class", "axis")
-          .attr("transform", `translate(0,${innerHeight})`)
-          .call(d3.axisBottom(x).ticks(width < 520 ? 4 : 6).tickFormat(d => `${d.toFixed(1)}×`));
-
-        g.append("text")
-          .attr("class", "axis-title")
-          .attr("data-axis", "x")
-          .attr("x", innerWidth / 2)
-          .attr("y", innerHeight + 39)
-          .attr("text-anchor", "middle")
-          .text("Kendi dondurulmuş tabanına göre hızlanma (×)");
-
-        g.append("text")
-          .attr("class", "axis-title")
-          .attr("data-axis", "y")
-          .attr("x", width < 560 ? 7 : -margin.left + 4)
-          .attr("y", -4)
-          .attr("text-anchor", "start")
-          .text("İş yükü");
+        g.append("g").attr("class", "axis").attr("transform", `translate(0,${innerHeight})`)
+          .call(d3.axisBottom(x).ticks(width < 520 ? 4 : 6).tickFormat(d => `${d} ms`));
+        g.append("text").attr("class", "axis-title").attr("data-axis", "x").attr("x", innerWidth / 2)
+          .attr("y", innerHeight + 41).attr("text-anchor", "middle").text("Medyan uçtan uca gecikme (ms, düşük daha iyi)");
+        applyVisibility();
       }
 
       function applyVisibility() {
-        if (!campaignSvg) return;
-        Object.entries(visibility).forEach(([series, visible]) => {
-          campaignSvg.selectAll(`[data-series="${series}"]`).style("display", visible ? null : "none");
+        root.querySelectorAll("[data-repo]").forEach(node => {
+          node.style.display = visible[node.dataset.repo] ? "" : "none";
         });
       }
 
       root.querySelectorAll("button[data-toggle]").forEach(button => {
         button.addEventListener("click", () => {
-          const series = button.dataset.toggle;
-          visibility[series] = !visibility[series];
-          button.setAttribute("aria-pressed", String(visibility[series]));
+          const repo = button.dataset.toggle;
+          visible[repo] = !visible[repo];
+          button.setAttribute("aria-pressed", String(visible[repo]));
           applyVisibility();
         });
       });
 
-      const redraw = () => {
-        drawCampaign();
-        drawSpeedups();
-      };
-
+      const redraw = () => { drawProgress(); drawLatency(); };
+      let observedWidth = 0;
       redraw();
-      const observer = new ResizeObserver(entries => {
-        if (entries.some(entry => entry.contentRect.width > 0)) redraw();
-      });
-      observer.observe(root);
+      new ResizeObserver(entries => {
+        const width = Math.round(entries[0].contentRect.width);
+        if (width !== observedWidth) {
+          observedWidth = width;
+          redraw();
+        }
+      }).observe(root);
     })();
   </script>
-</div>
+</main>
 </body>
 </html>
