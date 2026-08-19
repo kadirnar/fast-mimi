@@ -58,6 +58,11 @@ accepted production optimizations are listed.
 
 ### 100-second audio
 
+The optimization-history rows below belong to one measurement session and use
+the `135.667 ms` reference in the first row. A newer paired gate is reported
+separately because its matching reference was `133.561 ms`; mixing that row into
+this table would make its speedup denominator ambiguous.
+
 | Method | Latency | Speedup | Real-time Factor |
 |---|---:|---:|---:|
 | Independent pure PyTorch reference | 135.667 ms | 1.0000x | 737x |
@@ -68,7 +73,55 @@ accepted production optimizations are listed.
 | Selected WMMA decoder-12/final | 59.956 ms | 2.2628x | 1,668x |
 | Packed QKV, bit-equivalent RoPE, fixed-pointer graphs, and autotuning | 59.636 ms | 2.2744x | 1,677x |
 | Published independent Fast-Mimi API | 59.881 ms | 2.2656x | 1,670x |
-| Latest frozen paired benchmark | **58.916 ms** | **2.2669x** | **1,697x** |
+
+#### Latest frozen paired gate (separate session)
+
+| Paired measurement | Median latency | Speedup | 95% bootstrap CI | Real-time Factor |
+|---|---:|---:|---:|---:|
+| Pure PyTorch reference | 133.561 ms | 1.0000x | — | 749x |
+| Fast-Mimi candidate | **58.916 ms** | **2.2669x** | **2.2638x–2.2852x** | **1,697x** |
+
+This gate used the same fixed 100-second input for 50 alternating
+reference/candidate pairs and 10,000 bootstrap resamples. The frozen quality
+gate passed 20/20 inputs with zero code mismatches; its worst tolerance ratio
+was `0.887200` and maximum absolute waveform difference was `0.000197440`
+(`atol=2e-4`, `rtol=1e-4`).
+
+### Fixed-input recheck and additional attempts (2026-08-19)
+
+The recheck below uses one deterministic seed-1103 waveform; the five-second
+input is the exact prefix of the 100-second input. Every call uses eight
+codebooks, includes output materialization, synchronizes CUDA, and excludes
+compile/autotune warmup. Each result contains 50 alternating reference/candidate
+pairs and 10,000 bootstrap resamples. It is a separate session and therefore
+does not replace either table above.
+
+| Audio | Pure PyTorch reference | Fast-Mimi | Speedup | 95% paired CI | Quality |
+|---:|---:|---:|---:|---:|---|
+| 5 s | 9.943 ms | 5.544 ms | 1.7934x | 1.7375x–1.7949x | Codes 0, waveform violations 0 |
+| 100 s | 136.697 ms | 60.027 ms | 2.2773x | 2.2736x–2.2809x | Codes 0, waveform violations 0 |
+| 5 s target | — | ≤1.989 ms | 5.0000x | — | Same frozen contract required |
+| 100 s target | — | ≤27.339 ms | 5.0000x | — | Same frozen contract required |
+
+The newly tested mechanisms were all gated before production. Long-form native
+geometries cannot dispatch on the guarded five-second path; that path is covered
+by the unchanged 5.544 ms regression result above.
+
+| New attempt | 5-second scope | 100-second evidence | Accuracy | Decision |
+|---|---|---|---|---|
+| Three/four-term compensated FP16 encoder convolution | Not dispatchable: fixed long-form geometry | Three terms: 9.089 → 8.150 ms component; four terms: 9.193 → 9.586 ms | 31/35 code mismatches | Rejected |
+| Single fused SM120 compensated WMMA encoder kernel | Not dispatchable: fixed long-form geometry | 9.184 → 10.440 ms component | 28 code mismatches | Rejected |
+| Exact `im2col + SGEMM` encoder rewrite | Not promoted after long-form gate | 9.136 → 3.997 ms eager microtest, but 60.048 → 61.008 ms end to end | Bit-exact codes; waveform gate passed | Rejected: production path regressed |
+| Expanded decoder-12/final tile sweep | Not dispatchable: native 2,400,000-sample geometry | Tail 2.222 → 2.095 ms; paired end to end 59.960 → 59.880 ms | Bit-exact; paired 1.0024x, 95% CI 0.9983x–1.0055x | Rejected: not significant |
+| Expanded decoder-9 launch sweep | Not dispatchable: native 600,000-row geometry | Existing 0.8209 ms launch remained fastest | Every variant bit-exact | Rejected: no faster variant |
+| Single-kernel local FlexAttention | Not promoted after long-form gate | Attention 0.202 → 0.441 ms; end to end 59.893 → 64.206 ms | 11 code mismatches, 162,506 waveform violations | Rejected |
+
+Reproduce the fixed-input table with:
+
+```bash
+PYTHONPATH=src HF_HUB_OFFLINE=1 .venv/bin/python \
+  benchmarks/benchmark_fixed.py --audio-seconds 5 100 --pairs 50
+```
 
 ## Installation
 
