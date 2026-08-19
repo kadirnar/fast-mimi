@@ -6,6 +6,10 @@ Fast-Mimi is a Transformers-free PyTorch inference runtime for
 [Kyutai Mimi](https://huggingface.co/kyutai/mimi), optimized for RTX 5070 Ti
 (SM120) with CUDA Graphs, Triton, cuDNN, CUDA, and CUTLASS.
 
+The [interactive optimization report](docs/optimization-comparison.html) shows
+the accepted/rejected search trajectory in an AutoKernel-style progress view
+and compares the optimization stack with the separate fast-kernel campaign.
+
 ## End-to-end results
 
 Measurements use an RTX 5070 Ti (SM120), 24 kHz mono audio, eight codebooks,
