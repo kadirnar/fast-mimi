@@ -19,7 +19,7 @@ receive the same hash-pinned LibriSpeech crop, exact checkpoint revision, FP32
 PCM tensor, five-second duration, eight codebooks, GPU, PyTorch, and CUDA stack.
 Only the matched real-speech measurements are included in the chart.
 
-| Matched implementation | Median latency | vs. Transformers reference |
+| Matched implementation | Median latency | Speedup vs. 15.508 ms Transformers reference |
 |---|---:|---:|
 | Transformers `kyutai/mimi` reference | 15.508 ms | 1.0000x |
 | [fast-kernel](https://github.com/kadirnar/fast-kernel) native candidate | 10.320 ms | 1.5028x |
@@ -27,9 +27,12 @@ Only the matched real-speech measurements are included in the chart.
 | Fast-Mimi guarded SM120 runtime | **5.675 ms** | **2.7327x** |
 
 The cross-repository rows above are cross-session medians, not a paired
-confidence interval. Within each repository, 50 alternating pairs measured
-paired medians of `1.5012x` for fast-kernel and `1.7786x` for Fast-Mimi;
-Fast-Mimi's 95% paired bootstrap interval was `1.7581x–1.7992x`.
+confidence interval. Within fast-kernel, 50 alternating pairs measured a
+`1.5012x` paired median speedup for its native candidate against its
+Transformers-owned reference. Within Fast-Mimi, 50 alternating pairs measured
+a `1.7786x` paired median speedup for the guarded runtime against its functional
+FP32 reference; the corresponding 95% paired bootstrap interval was
+`1.7581x–1.7992x`.
 
 | Dimension | fast-kernel native candidate | Fast-Mimi production runtime |
 |---|---|---|
@@ -53,7 +56,7 @@ real-speech comparison above is the current reproducible cross-repository gate.
 
 ### 5-second audio
 
-| Method | Latency | Speedup | Real-time Factor |
+| Method | Latency | Speedup vs. 10.033 ms PyTorch baseline | Real-time factor (5 s / latency) |
 |---|---:|---:|---:|
 | Pure PyTorch FP32 | 10.033 ms | 1.0000x | 498x |
 | Inductor SEANet | 9.313 ms | 1.0772x | 537x |
@@ -63,7 +66,7 @@ real-speech comparison above is the current reproducible cross-repository gate.
 
 ### 10-second audio
 
-| Method | Latency | Speedup | Real-time Factor |
+| Method | Latency | Speedup vs. 12.644 ms PyTorch baseline | Real-time factor (10 s / latency) |
 |---|---:|---:|---:|
 | Pure PyTorch FP32 | 12.644 ms | 1.0000x | 791x |
 | Inductor SEANet | 10.653 ms | 1.1869x | 939x |
@@ -77,7 +80,7 @@ the `135.667 ms` reference in the first row. A newer paired gate is reported
 separately because its matching reference was `133.561 ms`; mixing that row into
 this table would make its speedup denominator ambiguous.
 
-| Method | Latency | Speedup | Real-time Factor |
+| Method | Latency | Speedup vs. 135.667 ms PyTorch baseline | Real-time factor (100 s / latency) |
 |---|---:|---:|---:|
 | Independent pure PyTorch reference | 135.667 ms | 1.0000x | 737x |
 | Inductor + CUDA Graph + Triton/cuDNN base package | 65.848 ms | 2.0603x | 1,519x |
@@ -90,7 +93,7 @@ this table would make its speedup denominator ambiguous.
 
 #### Latest frozen paired gate (separate session)
 
-| Paired measurement | Median latency | Speedup | 95% bootstrap CI | Real-time Factor |
+| Paired measurement | Median latency | Paired median speedup vs. same-pair PyTorch reference | 95% paired bootstrap CI | Real-time factor (100 s / latency) |
 |---|---:|---:|---:|---:|
 | Pure PyTorch reference | 133.561 ms | 1.0000x | — | 749x |
 | Fast-Mimi candidate | **58.916 ms** | **2.2669x** | **2.2638x–2.2852x** | **1,697x** |
@@ -113,12 +116,12 @@ exact prefix of the ten-second input. Every call uses eight codebooks, includes
 output materialization, synchronizes CUDA, and excludes compile/autotune warmup.
 Each result contains 50 alternating pairs and 10,000 bootstrap resamples.
 
-| Audio | Pure PyTorch reference | Fast-Mimi | Paired median speedup | 95% paired CI | Quality |
+| Audio | Pure PyTorch reference / speedup baseline | Fast-Mimi | Paired median speedup vs. same-row PyTorch reference | 95% paired CI | Quality |
 |---:|---:|---:|---:|---:|---|
 | 5 s | 10.010 ms | 5.675 ms | 1.7786x | 1.7581x–1.7992x | Codes 0, waveform violations 0 |
 | 10 s | 12.961 ms | 9.587 ms | 1.3550x | 1.3443x–1.3643x | Codes 0, waveform violations 0 |
-| 5 s target | — | ≤2.002 ms | 5.0000x | — | Same frozen contract required |
-| 10 s target | — | ≤2.592 ms | 5.0000x | — | Same frozen contract required |
+| 5 s target | 10.010 ms | ≤2.002 ms | 5.0000x | — | Same frozen contract required |
+| 10 s target | 12.961 ms | ≤2.592 ms | 5.0000x | — | Same frozen contract required |
 
 The guarded Fast-Mimi output is byte-identical to the Transformers result on
 this input: code SHA-256 `6cea0662…26ec`, waveform SHA-256 `3de82c42…9840`.
@@ -135,7 +138,7 @@ history but are excluded from the matched graph and table above.
 | Single fused SM120 compensated WMMA encoder kernel | 9.184 → 10.440 ms component | 28 code mismatches | Rejected |
 | Exact `im2col + SGEMM` encoder rewrite | 9.136 → 3.997 ms eager microtest, but 60.048 → 61.008 ms end to end | Codes exact; waveform gate passed | Rejected: end-to-end regression |
 | Exact stride-6/stride-8 `im2col` encoder rewrites | 60.109/60.070 ms end to end | Codes exact; waveform gate passed | Rejected: no gain |
-| Expanded decoder-12/final tile sweep | Tail 2.222 → 2.095 ms; paired 59.960 → 59.880 ms | Bit-exact; 1.0024x, 95% CI 0.9983x–1.0055x | Rejected: not significant |
+| Expanded decoder-12/final tile sweep | Tail 2.222 → 2.095 ms; paired 59.960 ms incumbent → 59.880 ms candidate | Bit-exact; 1.0024x vs. the 59.960 ms incumbent, 95% CI 0.9983x–1.0055x | Rejected: not significant |
 | Expanded decoder-9 launch sweep | Existing 0.8209 ms launch remained fastest | Every variant bit-exact | Rejected: no faster variant |
 | Single-kernel local FlexAttention | Attention 0.202 → 0.441 ms; end to end 59.893 → 64.206 ms | 11 code mismatches, 162,506 waveform violations | Rejected |
 | ATen-locked compiled encoder+decoder transformers | End to end 58.146 ms | 5 code mismatches, 45,988 waveform violations | Rejected |
