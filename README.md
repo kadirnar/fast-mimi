@@ -6,9 +6,30 @@ Fast-Mimi is a Transformers-free PyTorch inference runtime for
 [Kyutai Mimi](https://huggingface.co/kyutai/mimi), optimized for RTX 5070 Ti
 (SM120) with CUDA Graphs, Triton, cuDNN, CUDA, and CUTLASS.
 
-The [interactive optimization report](docs/optimization-comparison.html) shows
-the accepted/rejected search trajectory in an AutoKernel-style progress view
-and compares the optimization stack with the separate fast-kernel campaign.
+## Optimization overview
+
+[![Mimi optimization search trajectory and production comparison](assets/optimization-progress.svg)](docs/optimization-comparison.html)
+
+_Click the chart for the interactive report, experiment tooltips, and the full
+technique comparison. Its visual structure follows the
+[AutoKernel progress view](https://github.com/RightNow-AI/autokernel/blob/main/progress.png)._
+
+The visualization deliberately separates two different workloads. The upper
+trajectory records the download-free synthetic Mimi-style campaign in
+[fast-kernel](https://github.com/kadirnar/fast-kernel); the lower panel reports
+each implementation's speedup against its own frozen baseline. It is not a
+head-to-head benchmark of the two repositories.
+
+| Dimension | fast-kernel research campaign | Fast-Mimi production runtime |
+|---|---|---|
+| Target | Synthetic Mimi-style graph, 0.341-second input | Frozen `kyutai/mimi` checkpoint, 5/10/100-second inputs |
+| Accepted path | ATen storage reuse, dispatch collapse, TorchScript regions, whole-forward CUDA Graph | Inductor, Triton, cuDNN Frontend, segmented/fixed-pointer CUDA Graphs, CUDA/CUTLASS/WMMA |
+| Numerical contract | FP32; exact code streams and exact fixed-input replay output | Exact code streams; quality-gated long-form waveform with selected FP16 branches and FP32 residual/output |
+| Best measured speedup | 2.9921x against its synthetic frozen baseline | 1.8251x (5 s), 1.3631x (10 s), 2.2669x (100 s), each against its matching reference |
+| Deployment scope | Shape-keyed optimization adapter | Guarded SM120 production paths with portable PyTorch fallback |
+
+The 5-, 10-, and 100-second labels in this README are **input audio durations**,
+not benchmark wall-clock budgets.
 
 ## End-to-end results
 
