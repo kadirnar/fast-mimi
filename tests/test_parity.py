@@ -171,29 +171,3 @@ def test_optimize_keeps_the_transformers_api(dtype):
     if dtype == "fp32":
         assert torch.equal(rc, enc.audio_codes), "fp32 codes must be identical to the reference"
         torch.testing.assert_close(dec.audio_values, ra, rtol=2e-4, atol=2e-5)
-
-
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required")
-def test_kernelize_applies_the_conv_kernel():
-    """The convolution kernel is reachable through `kernels.kernelize`, and does not change the output."""
-    kernels = pytest.importorskip("kernels")
-    from transformers import MimiModel
-
-    from fast_mimi import hub_kernels
-
-    torch.backends.cuda.matmul.allow_tf32 = False
-    torch.backends.cudnn.allow_tf32 = False
-    ref = MimiModel.from_pretrained("kyutai/mimi", dtype=torch.float32).cuda().eval()
-    x = _signal(1.0, 20260826).cuda()
-    with torch.inference_mode():
-        rc = ref.encode(x).audio_codes
-        ra = ref.decode(rc).audio_values
-
-    hub_kernels.register()
-    model = kernels.kernelize(MimiModel.from_pretrained("kyutai/mimi", dtype=torch.float32).cuda().eval(),
-                              mode=kernels.Mode.INFERENCE, device="cuda")
-    with torch.inference_mode():
-        codes = model.encode(x).audio_codes
-        audio = model.decode(codes).audio_values
-    assert torch.equal(rc, codes)
-    torch.testing.assert_close(audio, ra, rtol=2e-4, atol=2e-5)

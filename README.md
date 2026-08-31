@@ -64,20 +64,6 @@ They share every kernel; only the weight and activation dtype differs. Agreement
 
 Same speed to within measurement noise (1 s: 0.771 vs 0.769 ms). Neither is more accurate than the other — they round differently, so a different handful of near-tie codes flips. BF16 has the wider exponent range and FP16 the longer mantissa; nothing in Mimi overflows FP16, so **use FP16 unless the rest of your pipeline is already BF16.**
 
-## Hugging Face `kernels`
-
-The convolution kernel is also registered for [`kernels`](https://github.com/huggingface/kernels), so the standard entry point works:
-
-```python
-from kernels import Mode, kernelize
-import fast_mimi.hub_kernels
-
-fast_mimi.hub_kernels.register()
-model = kernelize(model, mode=Mode.INFERENCE, device="cuda")
-```
-
-This is the per-layer path: it keeps the stock control flow and gives up what needs a whole-model view, so it is **1.18x** where `optimize` is 15.3x. Use it when you want `kernelize` to be the single entry point for every model in a pipeline; use `optimize` when you want the speed.
-
 ## Requirements
 
 - PyTorch 2.13 (CUDA 13), Triton 3.7+, `transformers >= 5.14`
