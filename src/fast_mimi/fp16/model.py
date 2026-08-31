@@ -104,13 +104,14 @@ def elu(x: Tensor) -> Tensor:
 class FastMimi(torch.nn.Module):
     """Mimi codec with the same numerics as transformers' MimiModel (no KV-cache / non-streaming path).
 
-    Notes on fidelity: transformers (4.48) does not pass an attention mask to the encoder/decoder transformer,
-    so with the default SDPA attention the transformer is *causal without sliding window*. We reproduce exactly
-    that. Set `sliding_window=True` to get the behaviour described in the Mimi paper (window of 250 tokens).
+    Notes on fidelity: transformers builds a sliding-window causal mask for the encoder/decoder transformer
+    (`create_sliding_window_causal_mask`, window 250), so a query attends to at most the last 250 keys. Older
+    transformers (4.48) passed no mask at all, i.e. plain causal; `sliding_window=False` reproduces that, but it
+    changes the codes for inputs longer than 250 tokens (10 s of audio).
     """
 
     def __init__(self, state: dict[str, Tensor], config: MimiConfig | None = None, dtype: torch.dtype = torch.float32,
-                 sliding_window: bool = False, attn_impl: str = "sdpa"):
+                 sliding_window: bool = True, attn_impl: str = "sdpa"):
         super().__init__()
         self.cfg = cfg = config or MimiConfig()
         self.dtype = dtype

@@ -24,7 +24,7 @@ class TritonMimi:
         self.ref = ref
         self.enc_seanet = TritonSEANetEncoder(state, cfg, tune=tune, wdtype=wdtype)
         self.dec_seanet = TritonSEANetDecoder(state, cfg, tune=tune, wdtype=wdtype)
-        tf_kw = dict(bm=16, attn="batched", wdtype=wdtype, max_bt=64)
+        tf_kw = dict(bm=16, attn="batched", wdtype=wdtype, max_bt=64, window=cfg.sliding_window)
         self.enc_tf = TritonTransformer(ref.enc_tf, **tf_kw)
         self.dec_tf = TritonTransformer(ref.dec_tf, **tf_kw)
         self.down_proj = DownProj(ref.down_w, ref.sem_in, ref.ac_in)

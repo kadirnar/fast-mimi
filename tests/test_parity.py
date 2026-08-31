@@ -140,7 +140,7 @@ def test_v4_without_padding_mask(seconds):
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required")
-@pytest.mark.parametrize("dtype", ["fp32", "fp16"])
+@pytest.mark.parametrize("dtype", ["fp32", "fp16", "bf16"])
 def test_optimize_keeps_the_transformers_api(dtype):
     """`fast_mimi.optimize(model, dtype=...)` patches a MimiModel in place and keeps its API and output types."""
     from transformers import MimiModel

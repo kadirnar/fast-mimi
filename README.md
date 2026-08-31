@@ -2,12 +2,11 @@
 
 Fast inference for [Mimi](https://huggingface.co/kyutai/mimi), Kyutai's neural audio codec. Drop-in for `transformers.MimiModel`: same API, same output types, fused Triton/CUDA kernels and CUDA graphs underneath, model weights unchanged.
 
-Two precisions, and nothing else to choose:
-
-| | | Speedup @ 1 s | Codes vs `transformers` |
+| precision | | Speedup @ 1 s | Codes vs `transformers` |
 |---|---|:---:|---|
-| **FP32** | exact kernels, no tensor cores | **15.3x** | bit-identical |
-| **FP16** | tensor cores | **23.3x** | ~80% identical, same reconstruction quality |
+| **FP32** | exact kernels, no tensor cores | **15.4x** | bit-identical |
+| **FP16** | tensor cores | **23.5x** | ~75-82% identical, same reconstruction quality |
+| **BF16** | the same kernels, wider exponent | **23.5x** | ~75-82% identical |
 
 ## Quick Start
 
@@ -23,6 +22,7 @@ import fast_mimi
 model = MimiModel.from_pretrained("kyutai/mimi", dtype=torch.float32).cuda().eval()
 fast_mimi.optimize(model)                        # FP32 - exact
 # fast_mimi.optimize(model, dtype="fp16")        # FP16 - fastest
+# fast_mimi.optimize(model, dtype="bf16")        # BF16 - same speed, wider exponent
 
 audio = torch.randn(1, 1, 24000, device="cuda")  # [batch, channels, samples] @ 24 kHz
 codes = model.encode(audio).audio_codes          # [1, 32, frames] int64
@@ -44,15 +44,15 @@ RTX 5070 Ti | `kyutai/mimi` (96.2M params) | encode + decode, batch 1, 24 kHz mo
 
 | Audio | transformers | **FP32** | Speedup | **FP16** | Speedup |
 |-------|:------------:|:--------:|:-------:|:--------:|:-------:|
-| 1 s | 18.17 ms | **1.18 ms** | **15.3x** | **0.76 ms** | **23.8x** |
-| 2 s | 18.68 ms | **2.08 ms** | **9.0x** | **1.14 ms** | **16.4x** |
-| 5 s | 19.76 ms | **3.89 ms** | **5.1x** | **1.50 ms** | **13.1x** |
-| 10 s | 24.85 ms | **6.90 ms** | **3.6x** | **2.45 ms** | **10.2x** |
-| 25 s | 39.77 ms | **16.55 ms** | **2.4x** | **5.60 ms** | **7.1x** |
-| 50 s | 71.70 ms | **31.37 ms** | **2.3x** | **10.91 ms** | **6.6x** |
-| 100 s | 140.79 ms | **61.25 ms** | **2.3x** | **21.58 ms** | **6.5x** |
+| 1 s | 18.16 ms | **1.18 ms** | **15.4x** | **0.77 ms** | **23.5x** |
+| 2 s | 18.69 ms | **2.06 ms** | **9.1x** | **1.11 ms** | **16.9x** |
+| 5 s | 20.31 ms | **3.87 ms** | **5.2x** | **1.51 ms** | **13.4x** |
+| 10 s | 26.04 ms | **6.86 ms** | **3.8x** | **2.45 ms** | **10.6x** |
+| 25 s | 42.78 ms | **16.43 ms** | **2.6x** | **5.46 ms** | **7.8x** |
+| 50 s | 77.25 ms | **31.17 ms** | **2.5x** | **10.46 ms** | **7.4x** |
+| 100 s | 151.89 ms | **60.99 ms** | **2.5x** | **20.07 ms** | **7.6x** |
 
-FP32 keeps the discrete codes bit-identical to the fp32 reference and the waveform within `rtol 2e-4 / atol 2e-5`, deterministically.
+FP32 keeps the discrete codes bit-identical to the fp32 reference and the waveform within `rtol 2e-4 / atol 2e-5`, deterministically. FP16 and BF16 share every kernel and measure the same; pick BF16 only if you want the wider exponent range.
 
 ## Hugging Face `kernels`
 
