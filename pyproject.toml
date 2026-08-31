@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fast-mimi"
+version = "1.0.0"
+description = "Fast inference for Kyutai's Mimi neural audio codec"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{ name = "fast-mimi contributors" }]
+dependencies = [
+  "huggingface-hub>=0.28",
+  "safetensors>=0.4",
+  "torch>=2.5",
+]
+
+[project.optional-dependencies]
+v3 = ["triton>=3.7.1; platform_system == 'Linux'"]
+test = ["pytest>=8", "ruff>=0.12"]
+v4 = [
+  "transformers>=5.14",
+  "triton>=3.7.1; platform_system == 'Linux'",
+  "nvidia-cuda-nvcc>=13.3.73,<14; platform_system == 'Linux'",
+  "nvidia-cuda-cccl>=13.3.3.4.1,<14; platform_system == 'Linux'",
+  "nvidia-cuda-crt>=13.3,<14; platform_system == 'Linux'",
+  "nvidia-nvvm>=13.3,<14; platform_system == 'Linux'",
+  "nvidia-cuda-runtime>=13.3,<14; platform_system == 'Linux'",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"fast_mimi.v3" = ["tuned_conv.json"]
+"fast_mimi.v4" = ["tuned/*.json"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+markers = [
+  "integration: downloads the published kyutai/mimi checkpoint",
+  "cuda: requires a CUDA-capable GPU",
+]
+
+[tool.ruff.lint]
+extend-select = ["D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+# hand-tuned kernels: measured, not style-reviewed
+"src/fast_mimi/v3/**" = ["ALL"]
+"src/fast_mimi/v4/**" = ["ALL"]
+"benchmarks/**" = ["ALL"]

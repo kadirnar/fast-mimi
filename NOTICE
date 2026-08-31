@@ -1,0 +1,9 @@
+fast-mimi
+Copyright 2026 fast-mimi contributors
+
+This product implements the architecture of Kyutai's Mimi neural audio codec.
+The model weights downloaded from https://huggingface.co/kyutai/mimi are not
+part of this distribution and are licensed separately under CC-BY-4.0.
+
+Mimi is described in "Moshi: a speech-text foundation model for real-time
+dialogue" by Alexandre Défossez et al., arXiv:2410.00037.

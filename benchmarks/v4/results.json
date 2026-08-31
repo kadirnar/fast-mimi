@@ -1,0 +1,210 @@
+{
+ "gpu": "NVIDIA GeForce RTX 5070 Ti, 610.43.03",
+ "date": "2026-08-31",
+ "torch": "2.13.0+cu130",
+ "rows": [
+  {
+   "seconds": 1.0,
+   "frames": 13,
+   "repeats": 50,
+   "transformers": {
+    "encode_ms": 11.890617999597453,
+    "decode_ms": 6.192561000716523,
+    "roundtrip_ms": 18.053623500236426,
+    "vram_gb": 1.43601152
+   },
+   "v4": {
+    "encode_ms": 0.6611384997086134,
+    "decode_ms": 0.5477795002661878,
+    "roundtrip_ms": 1.1840814986499026,
+    "vram_gb": 1.514804224
+   },
+   "codes_identical": true,
+   "codes_differing": 0,
+   "codes_total": 416,
+   "audio_within_tolerance": true,
+   "audio_max_abs_diff": 2.952292561531067e-06,
+   "deterministic": true,
+   "speedup": {
+    "encode": 17.985063651319745,
+    "decode": 11.304842546512441,
+    "roundtrip": 15.246943323429413
+   },
+   "rtf": 844.5364623467274
+  },
+  {
+   "seconds": 2.0,
+   "frames": 25,
+   "repeats": 50,
+   "transformers": {
+    "encode_ms": 12.267064501429559,
+    "decode_ms": 6.3830759972915985,
+    "roundtrip_ms": 18.613681500937673,
+    "vram_gb": 1.558432256
+   },
+   "v4": {
+    "encode_ms": 1.1322790014673956,
+    "decode_ms": 0.9471040011703735,
+    "roundtrip_ms": 2.051614499578136,
+    "vram_gb": 1.5829504
+   },
+   "codes_identical": true,
+   "codes_differing": 0,
+   "codes_total": 800,
+   "audio_within_tolerance": true,
+   "audio_max_abs_diff": 7.323920726776123e-06,
+   "deterministic": true,
+   "speedup": {
+    "encode": 10.833959196922185,
+    "decode": 6.739572411692677,
+    "roundtrip": 9.072699332533047
+   },
+   "rtf": 974.8420087746752
+  },
+  {
+   "seconds": 5.0,
+   "frames": 63,
+   "repeats": 50,
+   "transformers": {
+    "encode_ms": 13.031477999902563,
+    "decode_ms": 7.343425000726711,
+    "roundtrip_ms": 20.346779501778656,
+    "vram_gb": 1.693143552
+   },
+   "v4": {
+    "encode_ms": 2.124427997841849,
+    "decode_ms": 1.751799001795007,
+    "roundtrip_ms": 3.863426998577779,
+    "vram_gb": 1.6864384
+   },
+   "codes_identical": true,
+   "codes_differing": 0,
+   "codes_total": 2016,
+   "audio_within_tolerance": true,
+   "audio_max_abs_diff": 2.346932888031006e-06,
+   "deterministic": true,
+   "speedup": {
+    "encode": 6.134111399934901,
+    "decode": 4.191933545573528,
+    "roundtrip": 5.266510667671163
+   },
+   "rtf": 1294.18777728701
+  },
+  {
+   "seconds": 10.0,
+   "frames": 125,
+   "repeats": 50,
+   "transformers": {
+    "encode_ms": 15.876231500442373,
+    "decode_ms": 10.292734998074593,
+    "roundtrip_ms": 26.132973000130733,
+    "vram_gb": 1.902368256
+   },
+   "v4": {
+    "encode_ms": 3.7293190016498556,
+    "decode_ms": 3.15250899802777,
+    "roundtrip_ms": 6.869229000585619,
+    "vram_gb": 1.76503296
+   },
+   "codes_identical": true,
+   "codes_differing": 0,
+   "codes_total": 4000,
+   "audio_within_tolerance": true,
+   "audio_max_abs_diff": 1.389533281326294e-05,
+   "deterministic": true,
+   "speedup": {
+    "encode": 4.257139572511417,
+    "decode": 3.2649343759252694,
+    "roundtrip": 3.8043531519917053
+   },
+   "rtf": 1455.7674520892338
+  },
+  {
+   "seconds": 25.0,
+   "frames": 313,
+   "repeats": 20,
+   "transformers": {
+    "encode_ms": 23.988112501683645,
+    "decode_ms": 18.934667501525837,
+    "roundtrip_ms": 42.96340700057044,
+    "vram_gb": 2.305842176
+   },
+   "v4": {
+    "encode_ms": 8.979965999969863,
+    "decode_ms": 7.494696001231205,
+    "roundtrip_ms": 16.457088499009842,
+    "vram_gb": 1.846662656
+   },
+   "codes_identical": true,
+   "codes_differing": 0,
+   "codes_total": 10016,
+   "audio_within_tolerance": true,
+   "audio_max_abs_diff": 1.0360032320022583e-05,
+   "deterministic": true,
+   "speedup": {
+    "encode": 2.6712921298103076,
+    "decode": 2.526409009573612,
+    "roundtrip": 2.6106323122194657
+   },
+   "rtf": 1519.1022398344733
+  },
+  {
+   "seconds": 50.0,
+   "frames": 625,
+   "repeats": 20,
+   "transformers": {
+    "encode_ms": 40.72853100115026,
+    "decode_ms": 36.645169000621536,
+    "roundtrip_ms": 77.53063600102905,
+    "vram_gb": 2.922459136
+   },
+   "v4": {
+    "encode_ms": 17.021184001350775,
+    "decode_ms": 14.21741350168304,
+    "roundtrip_ms": 31.235972499416675,
+    "vram_gb": 2.008545792
+   },
+   "codes_identical": true,
+   "codes_differing": 0,
+   "codes_total": 20000,
+   "audio_within_tolerance": false,
+   "audio_max_abs_diff": 4.805438220500946e-05,
+   "deterministic": true,
+   "speedup": {
+    "encode": 2.3928142130370076,
+    "decode": 2.5774849269372044,
+    "roundtrip": 2.4820945146650044
+   },
+   "rtf": 1600.718530563879
+  },
+  {
+   "seconds": 100.0,
+   "frames": 1250,
+   "repeats": 20,
+   "transformers": {
+    "encode_ms": 77.44607700078632,
+    "decode_ms": 74.91982999817992,
+    "roundtrip_ms": 152.1218769994448,
+    "vram_gb": 4.160552448
+   },
+   "v4": {
+    "encode_ms": 33.24886950031214,
+    "decode_ms": 27.430314499724773,
+    "roundtrip_ms": 61.13456850107468,
+    "vram_gb": 2.127305728
+   },
+   "codes_identical": true,
+   "codes_differing": 0,
+   "codes_total": 40000,
+   "audio_within_tolerance": true,
+   "audio_max_abs_diff": 1.6517937183380127e-05,
+   "deterministic": true,
+   "speedup": {
+    "encode": 2.329284518983698,
+    "decode": 2.731278564047512,
+    "roundtrip": 2.48831194411343
+   },
+   "rtf": 1635.7357621366398
+  }
+ ]
+}

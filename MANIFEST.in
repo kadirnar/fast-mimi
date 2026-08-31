@@ -1,0 +1,3 @@
+recursive-include benchmarks *.json *.py
+global-exclude *.py[cod]
+global-exclude __pycache__
