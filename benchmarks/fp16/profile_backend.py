@@ -2,8 +2,8 @@
 import sys, torch
 import os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "src"))
-from fast_mimi.v3 import load_mimi_state
-from fast_mimi.v3.backends import build
+from fast_mimi.fp16 import load_mimi_state
+from fast_mimi.fp16.backends import build
 from torch.profiler import profile, ProfilerActivity
 backend = sys.argv[1] if len(sys.argv) > 1 else "triton"
 sec = float(sys.argv[2]) if len(sys.argv) > 2 else 1

@@ -24,7 +24,7 @@ def _signal(seconds: float, seed: int, batch: int = 1, samples: int | None = Non
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required")
 @pytest.mark.parametrize("seconds,batch,samples", [(1.0, 1, None), (0.5, 2, None), (1.0, 1, SR + 123), (0.05, 1, None)])
 def test_v4_matches_reference(seconds, batch, samples):
-    from fast_mimi.v4 import build, load_reference
+    from fast_mimi.fp32 import build, load_reference
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.backends.cudnn.allow_tf32 = False
     ref = load_reference()
@@ -46,7 +46,7 @@ def test_v4_matches_reference(seconds, batch, samples):
 def test_v4_long_form_matches_reference():
     """12 s of audio puts the transformers at T = 300, past the CUDA attention's 128-frame limit: the windowed
     Triton kernel and the cuBLAS O projection have to reproduce the reference layer."""
-    from fast_mimi.v4 import build, load_reference
+    from fast_mimi.fp32 import build, load_reference
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.backends.cudnn.allow_tf32 = False
     ref = load_reference()
@@ -67,9 +67,9 @@ def test_v4_long_form_matches_reference():
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required")
 def test_rvq_long_path_is_the_reference_expression():
     """Past REF_MIN_ROWS the quantizer search must be bit-identical to `transformers`' own cdist / argmin loop."""
-    from fast_mimi.v4._compat import ensure_cuda_home
+    from fast_mimi.fp32._compat import ensure_cuda_home
     ensure_cuda_home()
-    from fast_mimi.v4.kernels.rvq_fp32 import REF_MIN_ROWS, rvq_encode
+    from fast_mimi.fp32.kernels.rvq_fp32 import REF_MIN_ROWS, rvq_encode
 
     torch.backends.cuda.matmul.allow_tf32 = False
     stages, size, dim = 8, 2048, 256
@@ -92,9 +92,9 @@ def test_rvq_long_path_is_the_reference_expression():
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required")
 def test_rvq_tiled_path_matches_the_fused_chain():
     """The register-tiled search (rows >= TILED_MIN_ROWS) keeps the fused chain's 8 x 32 fmaf order: same codes."""
-    from fast_mimi.v4._compat import ensure_cuda_home
+    from fast_mimi.fp32._compat import ensure_cuda_home
     ensure_cuda_home()
-    from fast_mimi.v4.kernels import rvq_fp32 as rvq
+    from fast_mimi.fp32.kernels import rvq_fp32 as rvq
 
     torch.backends.cuda.matmul.allow_tf32 = False
     stages, size, dim = 8, 2048, 256
@@ -119,7 +119,7 @@ def test_rvq_tiled_path_matches_the_fused_chain():
 def test_v4_without_padding_mask(seconds):
     """`model.encode(audio)` / `model.decode(codes)` -- the natural transformers call -- must take the graphed path
     and return exactly what the reference returns (encode ignores the mask; decode without one does not truncate)."""
-    from fast_mimi.v4 import build, load_reference, report
+    from fast_mimi.fp32 import build, load_reference, report
 
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.backends.cudnn.allow_tf32 = False
@@ -137,3 +137,63 @@ def test_v4_without_padding_mask(seconds):
     assert fa.shape == ra.shape, "decode without a mask must not truncate"
     torch.testing.assert_close(fa, ra, rtol=2e-4, atol=2e-5)
     assert after == before + 2, "encode and decode without a mask must both take the graphed path"
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required")
+@pytest.mark.parametrize("dtype", ["fp32", "fp16"])
+def test_optimize_keeps_the_transformers_api(dtype):
+    """`fast_mimi.optimize(model, dtype=...)` patches a MimiModel in place and keeps its API and output types."""
+    from transformers import MimiModel
+    from transformers.models.mimi.modeling_mimi import (
+        MimiDecoderOutput,
+        MimiEncoderOutput,
+    )
+
+    import fast_mimi
+
+    torch.backends.cuda.matmul.allow_tf32 = False
+    torch.backends.cudnn.allow_tf32 = False
+    ref = MimiModel.from_pretrained("kyutai/mimi", dtype=torch.float32).cuda().eval()
+    model = MimiModel.from_pretrained("kyutai/mimi", dtype=torch.float32).cuda().eval()
+    assert fast_mimi.optimize(model, dtype=dtype) is model, "optimize patches in place"
+
+    x = _signal(1.0, 20260826).cuda()
+    mask = torch.ones_like(x, dtype=torch.bool)
+    with torch.inference_mode():
+        rc = ref.encode(x).audio_codes
+        ra = ref.decode(rc).audio_values
+        enc, dec = model.encode(x), model.decode(model.encode(x).audio_codes)
+        trunc = model.decode(model.encode(x, mask).audio_codes, mask).audio_values
+    assert isinstance(enc, MimiEncoderOutput) and isinstance(dec, MimiDecoderOutput)
+    assert enc.audio_codes.shape == rc.shape and enc.audio_codes.dtype == rc.dtype
+    assert dec.audio_values.shape == ra.shape
+    assert trunc.shape[-1] == x.shape[-1], "a padding mask still truncates the waveform"
+    if dtype == "fp32":
+        assert torch.equal(rc, enc.audio_codes), "fp32 codes must be identical to the reference"
+        torch.testing.assert_close(dec.audio_values, ra, rtol=2e-4, atol=2e-5)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA required")
+def test_kernelize_applies_the_conv_kernel():
+    """The convolution kernel is reachable through `kernels.kernelize`, and does not change the output."""
+    kernels = pytest.importorskip("kernels")
+    from transformers import MimiModel
+
+    from fast_mimi import hub_kernels
+
+    torch.backends.cuda.matmul.allow_tf32 = False
+    torch.backends.cudnn.allow_tf32 = False
+    ref = MimiModel.from_pretrained("kyutai/mimi", dtype=torch.float32).cuda().eval()
+    x = _signal(1.0, 20260826).cuda()
+    with torch.inference_mode():
+        rc = ref.encode(x).audio_codes
+        ra = ref.decode(rc).audio_values
+
+    hub_kernels.register()
+    model = kernels.kernelize(MimiModel.from_pretrained("kyutai/mimi", dtype=torch.float32).cuda().eval(),
+                              mode=kernels.Mode.INFERENCE, device="cuda")
+    with torch.inference_mode():
+        codes = model.encode(x).audio_codes
+        audio = model.decode(codes).audio_values
+    assert torch.equal(rc, codes)
+    torch.testing.assert_close(audio, ra, rtol=2e-4, atol=2e-5)

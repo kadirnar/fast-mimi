@@ -1,7 +1,7 @@
 """transformers MimiModel (fp32, TF32 off) vs fast-mimi v4: timing, exactness, table and chart.
 
-    python benchmarks/v4/bench_v4.py --seconds 1 2 5 10 25 50 100 \
-        --out-json benchmarks/v4/results.json --out-md docs/v4/RESULTS.md --chart assets/v4-benchmark.svg
+    python benchmarks/fp32/bench.py --seconds 1 2 5 10 25 50 100 \
+        --out-json benchmarks/fp32/results.json --out-md the benchmarks --chart assets/v4-benchmark.svg
 
 Protocol (identical for both models, per length): seeded synthetic 24 kHz audio (0.1 x white noise + a decaying
 sine sweep), batch 1; encode / decode(reference codes) / round trip timed separately; 3 warm-up calls, a 0.5 s
@@ -97,7 +97,7 @@ def write_markdown(rows: list[dict], path: str, gpu: str) -> str:
     lines = [
         f"# fast-mimi v4 (fp32-exact) results ({datetime.date.today()})", "",
         f"GPU: {gpu}. Batch 1, seeded synthetic 24 kHz audio, all 32 codebooks, CUDA-synchronised wall clock, median of N runs after 3 warm-ups and a 0.5 s clock ramp, same inputs for both models.",
-        "Baseline: `transformers` `MimiModel` fp32 with TF32 off (SDPA attention). v4: the same `MimiModel` object patched in place by `fast_mimi.v4.build()` (exact fp32 kernels + CUDA graphs).", "",
+        "Baseline: `transformers` `MimiModel` fp32 with TF32 off (SDPA attention). v4: the same `MimiModel` object patched in place by `fast_mimi.fp32.build()` (exact fp32 kernels + CUDA graphs).", "",
         "| audio | frames | transformers enc / dec / roundtrip (ms) | v4 enc / dec / roundtrip (ms) | speedup enc / dec / **roundtrip** | real-time factor | codes identical | audio within tol (max abs diff) |",
         "| --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
@@ -149,7 +149,7 @@ def main() -> int:
     torch.backends.cudnn.allow_tf32 = False
     torch.backends.cudnn.benchmark = False
     torch.manual_seed(20260826)
-    from fast_mimi.v4 import build, load_reference
+    from fast_mimi.fp32 import build, load_reference
     gpu = subprocess.run(["nvidia-smi", "--query-gpu=name,driver_version", "--format=csv,noheader"], capture_output=True, text=True).stdout.strip()
     ref = load_reference()
     fast = build(log=lambda m: print(m, file=sys.stderr))

@@ -1,6 +1,6 @@
 """Measured roofline for Mimi encode + decode: what the hardware allows, and how close v4 is.
 
-    python benchmarks/v4/roofline.py
+    python benchmarks/fp32/roofline.py
 
 Reports, for this GPU: the achievable DRAM read bandwidth and fp32 (TF32 off) GEMM throughput; the fp32 weight
 bytes one encode + decode has to touch; and the FLOPs per audio length, counted from the real module output
@@ -33,7 +33,7 @@ What follows from it:
 - **A 100x round trip is not reachable at any audio length.** At 1 s it would mean 0.175 ms, which is 2.6x less
   than the time it takes to read the weights once. The only way under that floor is to stop reading fp32
   weights -- quantization, or reduced-precision tensor cores -- which is exactly what "identical codes, no
-  change in quality" rules out. That is the trade `fast_mimi.v3` makes: bf16 tensor cores, ~24x on 1 s, ~83% of
+  change in quality" rules out. That is the trade `fast_mimi.fp16` makes: bf16 tensor cores, ~24x on 1 s, ~83% of
   the codes identical.
 - Short inputs are bandwidth bound, long inputs are compute bound, and the crossover sits around 2 s of audio.
   That is why the speedup falls with length even though the implementation does not get worse.
@@ -85,7 +85,7 @@ def machine() -> tuple[float, float]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seconds", type=float, nargs="+", default=[1, 2, 5, 10, 25, 50, 100])
-    ap.add_argument("--results", default="benchmarks/v4/results.json", help="bench_v4.py output, for the measured rows")
+    ap.add_argument("--results", default="benchmarks/fp32/results.json", help="bench_v4.py output, for the measured rows")
     ap.add_argument("--out-md", default="")
     a = ap.parse_args()
     torch.backends.cuda.matmul.allow_tf32 = False

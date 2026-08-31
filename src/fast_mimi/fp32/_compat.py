@@ -158,8 +158,8 @@ def ensure_cuda_home() -> str | None:
 
 
 def build_dir(_root: Path | None = None) -> Path:
-    """Cache directory for the compiled CUDA extensions (FAST_MIMI_BUILD_DIR or ~/.cache/fast-mimi/v4)."""
+    """Cache directory for the compiled CUDA extensions (FAST_MIMI_BUILD_DIR or ~/.cache/fast-mimi/fp32)."""
     env = os.environ.get("FAST_MIMI_BUILD_DIR")
-    path = Path(env) if env else Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "fast-mimi" / "v4"
+    path = Path(env) if env else Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "fast-mimi" / "fp32"
     path.mkdir(parents=True, exist_ok=True)
     return path

@@ -1,6 +1,6 @@
-"""Tune the SEANet conv tiles at long-form shapes and add them to `src/fast_mimi/v4/tuned/conv1d_fp32.json`.
+"""Tune the SEANet conv tiles at long-form shapes and add them to `src/fast_mimi/fp32/tuned/conv1d_fp32.json`.
 
-    python benchmarks/v4/tune_conv1d.py --seconds 25 100 --write
+    python benchmarks/fp32/tune_conv1d.py --seconds 25 100 --write
 
 The shipped table was measured on ~1 s inputs; `_lookup` reuses a layer's entry at any N, so a 100 s round trip runs
 tiles chosen for a 10 000x smaller output length.  This walks a real encode + decode at the requested lengths, records
@@ -80,13 +80,13 @@ def main() -> int:
     ap.add_argument("--seconds", type=float, nargs="+", default=[25, 100])
     ap.add_argument("--gain", type=float, default=0.03, help="minimum relative improvement to keep a new entry")
     ap.add_argument("--write", action="store_true")
-    ap.add_argument("--out", default="src/fast_mimi/v4/tuned/conv1d_fp32.json")
+    ap.add_argument("--out", default="src/fast_mimi/fp32/tuned/conv1d_fp32.json")
     a = ap.parse_args()
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.backends.cudnn.allow_tf32 = False
 
-    from fast_mimi.v4 import build
-    from fast_mimi.v4.kernels import conv1d_fp32 as C
+    from fast_mimi.fp32 import build
+    from fast_mimi.fp32.kernels import conv1d_fp32 as C
 
     model = build()
 
@@ -109,7 +109,7 @@ def main() -> int:
         return orig_convt(self, x, *args, **kw)
 
     C.Conv1dPlan.__call__, C.ConvT1dPlan.__call__ = rec_conv, rec_convt
-    from fast_mimi.v4 import eager_mode
+    from fast_mimi.fp32 import eager_mode
     with torch.inference_mode(), eager_mode():
         for sec in a.seconds:
             x = signal(sec).cuda()

@@ -1,4 +1,4 @@
-"""fast-mimi v4 timing rows in the benchmarks/v3 schema (same protocol and seeded input as bench_fast.py / bench_v2.py)."""
+"""fast-mimi FP32 timing rows in the FP16 benchmark schema (same protocol and seeded input as benchmarks/fp16/bench.py)."""
 from __future__ import annotations
 import argparse, json, os, statistics, sys, time
 import torch
@@ -31,7 +31,7 @@ def main():
     args = ap.parse_args()
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.backends.cudnn.allow_tf32 = False
-    from fast_mimi.v4 import build, load_reference
+    from fast_mimi.fp32 import build, load_reference
     ref = load_reference()
     model = build()
     results = []

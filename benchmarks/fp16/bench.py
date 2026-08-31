@@ -5,7 +5,7 @@ import torch
 
 import os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "src"))
-from fast_mimi.v3 import FastMimi, load_mimi_state
+from fast_mimi.fp16 import FastMimi, load_mimi_state
 
 
 def bench(fn, warmup, repeats, warm_seconds=1.0):
@@ -43,7 +43,7 @@ def main():
     if args.backend == "torch":
         model = FastMimi(state, dtype=dtype)
     else:
-        from fast_mimi.v3.backends import build
+        from fast_mimi.fp16.backends import build
         model = build(args.backend, state, dtype=dtype)
     results = []
     with torch.inference_mode():

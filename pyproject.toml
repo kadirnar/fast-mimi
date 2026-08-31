@@ -17,9 +17,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-v3 = ["triton>=3.7.1; platform_system == 'Linux'"]
+fp16 = ["transformers>=5.14", "triton>=3.7.1; platform_system == 'Linux'"]
 test = ["pytest>=8", "ruff>=0.12"]
-v4 = [
+fp32 = [
   "transformers>=5.14",
   "triton>=3.7.1; platform_system == 'Linux'",
   "nvidia-cuda-nvcc>=13.3.73,<14; platform_system == 'Linux'",
@@ -33,8 +33,8 @@ v4 = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-"fast_mimi.v3" = ["tuned_conv.json"]
-"fast_mimi.v4" = ["tuned/*.json"]
+"fast_mimi.fp16" = ["tuned_conv.json"]
+"fast_mimi.fp32" = ["tuned/*.json"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"
@@ -53,6 +53,6 @@ convention = "google"
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
 # hand-tuned kernels: measured, not style-reviewed
-"src/fast_mimi/v3/**" = ["ALL"]
-"src/fast_mimi/v4/**" = ["ALL"]
+"src/fast_mimi/fp16/**" = ["ALL"]
+"src/fast_mimi/fp32/**" = ["ALL"]
 "benchmarks/**" = ["ALL"]

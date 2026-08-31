@@ -1,6 +1,6 @@
 """Does batching pay?  Per-item cost of encode + decode at batch 1..N, v4 vs transformers.
 
-    python benchmarks/v4/bench_batch.py --seconds 1 5 25
+    python benchmarks/fp32/bench_batch.py --seconds 1 5 25
 
 Batch 1 is latency bound on streaming the 384 MB of fp32 weights once; that cost is shared across a batch, so
 the interesting number is milliseconds per item, not per call.  Codes are checked against the reference at every
@@ -56,7 +56,7 @@ def main() -> int:
     a = ap.parse_args()
     torch.backends.cuda.matmul.allow_tf32 = False
     torch.backends.cudnn.allow_tf32 = False
-    from fast_mimi.v4 import build, load_reference
+    from fast_mimi.fp32 import build, load_reference
 
     ref = load_reference()
     fast = build()

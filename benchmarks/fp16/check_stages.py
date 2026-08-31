@@ -2,9 +2,9 @@
 import sys, torch, math
 import os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "src"))
-from fast_mimi.v3 import FastMimi, load_mimi_state
-from fast_mimi.v3.model import causal_conv1d, causal_conv_transpose1d
-from fast_mimi.v3.triton_backend import TritonMimi
+from fast_mimi.fp16 import FastMimi, load_mimi_state
+from fast_mimi.fp16.model import causal_conv1d, causal_conv_transpose1d
+from fast_mimi.fp16.triton_backend import TritonMimi
 torch.backends.cudnn.allow_tf32 = False; torch.backends.cuda.matmul.allow_tf32 = False
 state = load_mimi_state("kyutai/mimi")
 ref = FastMimi(state, dtype=torch.float32)
