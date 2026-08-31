@@ -1,0 +1,25 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+build/
+dist/
+benchmark-results/
+kernel-build/
+torch_compile_debug/
+*.wav
+*.pt
+*.pth
+*.safetensors
+*.o
+*.a
+*.so
+*.ptx
+*.cubin
+compile_commands.json
+# fast-mimi v3: per-GPU conv autotune cache and benchmark scratch
+src/fast_mimi/v3/tuned_conv.json
+benchmarks/v3/baseline.json
