@@ -2,11 +2,7 @@
 
 Fast inference for [Mimi](https://huggingface.co/kyutai/mimi), Kyutai's neural audio codec. Drop-in for `transformers.MimiModel`: same API, same output types, fused Triton/CUDA kernels and CUDA graphs underneath, model weights unchanged.
 
-| precision | | Speedup @ 1 s | Codes vs `transformers` |
-|---|---|:---:|---|
-| **FP32** | exact kernels, no tensor cores | **15.4x** | bit-identical |
-| **FP16** | tensor cores | **23.5x** | ~75-82% identical, same reconstruction quality |
-| **BF16** | the same kernels, wider exponent | **23.5x** | ~75-82% identical |
+Three precisions: **FP32** (exact, codes bit-identical), **FP16** and **BF16** (tensor cores, fastest).
 
 ## Quick Start
 
@@ -52,7 +48,21 @@ RTX 5070 Ti | `kyutai/mimi` (96.2M params) | encode + decode, batch 1, 24 kHz mo
 | 50 s | 77.25 ms | **31.17 ms** | **2.5x** | **10.46 ms** | **7.4x** |
 | 100 s | 151.89 ms | **60.99 ms** | **2.5x** | **20.07 ms** | **7.6x** |
 
-FP32 keeps the discrete codes bit-identical to the fp32 reference and the waveform within `rtol 2e-4 / atol 2e-5`, deterministically. FP16 and BF16 share every kernel and measure the same; pick BF16 only if you want the wider exponent range.
+FP32 keeps the discrete codes bit-identical to the fp32 reference and the waveform within `rtol 2e-4 / atol 2e-5`, deterministically.
+
+### FP16 vs BF16
+
+They share every kernel; only the weight and activation dtype differs. Agreement is the fraction of discrete codes matching the fp32 reference, SNR is the decoded waveform against it.
+
+| Audio | FP16 codes / SNR | BF16 codes / SNR |
+|-------|:----------------:|:----------------:|
+| 1 s | 82.0% / 13.7 dB | 79.3% / 13.9 dB |
+| 5 s | 82.5% / 12.6 dB | 82.3% / 12.3 dB |
+| 12 s | 80.7% / 8.2 dB | 81.4% / 8.2 dB |
+| 25 s | 76.3% / 6.2 dB | 76.3% / 6.2 dB |
+| 50 s | 74.4% / 6.1 dB | 74.4% / 6.1 dB |
+
+Same speed to within measurement noise (1 s: 0.771 vs 0.769 ms). Neither is more accurate than the other — they round differently, so a different handful of near-tie codes flips. BF16 has the wider exponent range and FP16 the longer mantissa; nothing in Mimi overflows FP16, so **use FP16 unless the rest of your pipeline is already BF16.**
 
 ## Hugging Face `kernels`
 
