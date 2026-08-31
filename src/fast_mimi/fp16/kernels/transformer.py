@@ -114,7 +114,7 @@ def _ln_gemm_kernel(x_ptr, lnw_ptr, lnb_ptr, w_ptr, sc_ptr, out_ptr, cos_ptr, si
 
 @triton.jit
 def _attn_o_kernel(qkv_ptr, wo_ptr, sc_ptr, ls_ptr, x_ptr, M, scale,
-                   D: tl.constexpr, H: tl.constexpr, HD: tl.constexpr, BM: tl.constexpr, BN: tl.constexpr, BT: tl.constexpr, INT8: tl.constexpr):
+                   D: tl.constexpr, H: tl.constexpr, HD: tl.constexpr, BM: tl.constexpr, BN: tl.constexpr, BT: tl.constexpr, INT8: tl.constexpr, WINDOW: tl.constexpr):
     """x[m-tile, n-tile] += ls * (attn(q,k,v)[m-tile] @ Wo[:, n-tile]); attention recomputed per n-tile (small T)."""
     pid_n = tl.program_id(0)
     pid_m = tl.program_id(1)
@@ -125,7 +125,7 @@ def _attn_o_kernel(qkv_ptr, wo_ptr, sc_ptr, ls_ptr, x_ptr, M, scale,
     hd = tl.arange(0, HD)
     ncols = pid_n * BN + tl.arange(0, BN)
     acc = tl.zeros([BM, BN], dtype=tl.float32)
-    allowed = (tcols[None, :] <= rows[:, None]) & tmask[None, :]
+    allowed = (tcols[None, :] <= rows[:, None]) & (tcols[None, :] > rows[:, None] - WINDOW) & tmask[None, :]
     for h in range(H):
         q = tl.load(qkv_ptr + rows[:, None] * (3 * D) + (h * HD + hd)[None, :], mask=rmask[:, None], other=0.0)
         k = tl.load(qkv_ptr + tcols[:, None] * (3 * D) + (D + h * HD + hd)[None, :], mask=tmask[:, None], other=0.0)
@@ -145,7 +145,7 @@ def _attn_o_kernel(qkv_ptr, wo_ptr, sc_ptr, ls_ptr, x_ptr, M, scale,
 
 @triton.jit
 def _attn_o_batched_kernel(qkv_ptr, wo_ptr, sc_ptr, ls_ptr, x_ptr, M, scale,
-                           D: tl.constexpr, H: tl.constexpr, HD: tl.constexpr, BM: tl.constexpr, BN: tl.constexpr, BT: tl.constexpr, INT8: tl.constexpr):
+                           D: tl.constexpr, H: tl.constexpr, HD: tl.constexpr, BM: tl.constexpr, BN: tl.constexpr, BT: tl.constexpr, INT8: tl.constexpr, WINDOW: tl.constexpr):
     """Same as _attn_o_kernel but all heads at once via batched dots (fewer reductions / syncs)."""
     pid_n = tl.program_id(0)
     pid_m = tl.program_id(1)
@@ -163,7 +163,8 @@ def _attn_o_batched_kernel(qkv_ptr, wo_ptr, sc_ptr, ls_ptr, x_ptr, M, scale,
     k3 = tl.permute(tl.reshape(k, [BT, H, HD]), (1, 2, 0))      # [H, HD, BT]
     v3 = tl.permute(tl.reshape(v, [BT, H, HD]), (1, 0, 2))      # [H, BT, HD]
     s = tl.dot(q3, k3) * scale                                  # [H, BM, BT]
-    allowed = (tcols[None, None, :] <= rows[None, :, None]) & tmask[None, None, :]
+    allowed = ((tcols[None, None, :] <= rows[None, :, None])
+               & (tcols[None, None, :] > rows[None, :, None] - WINDOW) & tmask[None, None, :])
     s = tl.where(allowed, s, float("-inf"))
     mx = tl.max(s, axis=2)
     p = tl.exp(s - mx[:, :, None])
@@ -178,7 +179,7 @@ def _attn_o_batched_kernel(qkv_ptr, wo_ptr, sc_ptr, ls_ptr, x_ptr, M, scale,
 
 @triton.jit
 def _attn_flash_kernel(qkv_ptr, o_ptr, M, scale,
-                       D: tl.constexpr, H: tl.constexpr, HD: tl.constexpr, BM: tl.constexpr, BN: tl.constexpr):
+                       D: tl.constexpr, H: tl.constexpr, HD: tl.constexpr, BM: tl.constexpr, BN: tl.constexpr, WINDOW: tl.constexpr):
     """Causal flash attention (online softmax) for long sequences: o[m, h*HD:(h+1)*HD] = softmax(q k^T) v."""
     pid_m = tl.program_id(0)
     h = tl.program_id(1)
@@ -190,13 +191,20 @@ def _attn_flash_kernel(qkv_ptr, o_ptr, M, scale,
     l_i = tl.zeros([BM], dtype=tl.float32)
     acc = tl.zeros([BM, HD], dtype=tl.float32)
     hi = tl.minimum((pid_m + 1) * BM, M)
-    for n0 in range(0, hi, BN):
+    # start at the first key any query in this block may attend to: a leading block that the window masks out
+    # entirely would leave the running maximum at -inf, and exp(-inf - -inf) is a NaN
+    lo = tl.maximum(pid_m * BM - WINDOW + 1, 0)
+    lo = (lo // BN) * BN
+    for n0 in range(lo, hi, BN):
         cols = n0 + tl.arange(0, BN)
         cmask = cols < M
         k = tl.load(qkv_ptr + cols[:, None] * (3 * D) + (D + h * HD + hd)[None, :], mask=cmask[:, None], other=0.0)
         v = tl.load(qkv_ptr + cols[:, None] * (3 * D) + (2 * D + h * HD + hd)[None, :], mask=cmask[:, None], other=0.0)
         s = tl.dot(q, tl.trans(k)) * scale
-        s = tl.where((cols[None, :] <= rows[:, None]) & cmask[None, :], s, float("-inf"))
+        # a finite sentinel, not -inf: with a sliding window a query's first key block can be masked out entirely,
+        # which would leave the running maximum at -inf and make exp(m_i - m_new) a NaN for the whole row
+        s = tl.where((cols[None, :] <= rows[:, None]) & (cols[None, :] > rows[:, None] - WINDOW)
+                     & cmask[None, :], s, -3.0e38)
         m_new = tl.maximum(m_i, tl.max(s, axis=1))
         alpha = tl.exp(m_i - m_new)
         p = tl.exp(s - m_new[:, None])
@@ -261,8 +269,11 @@ def _TILES_FOR(M: int):
 class TritonTransformer:
     def __init__(self, layers, D=512, H=8, HD=64, FF=2048, eps=1e-5, theta=10000.0,
                  bm=32, bk=128, bn_fc1=64, bn_attn=64, bn_fc2=64, nsplit=4, num_warps=4, num_stages=3, max_bt=128, attn="loop",
-                 wdtype="bf16"):
+                 wdtype="bf16", window=250):
         self.D, self.H, self.HD, self.FF, self.eps, self.theta = D, H, HD, FF, eps, theta
+        # transformers applies a causal mask limited to `sliding_window` keys (modeling_mimi builds it with
+        # create_sliding_window_causal_mask); without it the codes diverge past that many tokens
+        self.window = int(window)
         self.attn = attn
         self.int8 = wdtype == "int8"
         def prep(w_nk):   # nn.Linear weight [N, K] -> [K, N] (bf16) or (int8, scale)
@@ -324,11 +335,12 @@ class TritonTransformer:
             if fused_attn:
                 attn_kernel = _attn_o_batched_kernel if self.attn == "batched" else _attn_o_kernel
                 attn_kernel[(D // bn_attn, mt)](b["qkv"], L["wo"], L["so"], L["ls1"], x, M, 1.0 / math.sqrt(self.HD),
-                                                D=D, H=self.H, HD=self.HD, BM=BM, BN=bn_attn, BT=BT, INT8=i8, num_warps=nw, num_stages=ns)
+                                                D=D, H=self.H, HD=self.HD, BM=BM, BN=bn_attn, BT=BT, INT8=i8, WINDOW=self.window, num_warps=nw, num_stages=ns)
             else:
                 BMa = 64
                 _attn_flash_kernel[(triton.cdiv(M, BMa), self.H)](b["qkv"], b["o"], M, 1.0 / math.sqrt(self.HD),
-                                                                   D=D, H=self.H, HD=self.HD, BM=BMa, BN=64, num_warps=4, num_stages=2)
+                                                                   D=D, H=self.H, HD=self.HD, BM=BMa, BN=64,
+                                                                   WINDOW=self.window, num_warps=4, num_stages=2)
                 _fc2_kernel[(D // bn_fc2, mt, 1)](b["o"], L["wo"], L["so"], L["ls1"], x, M, KIN=D, D=D, BM=BM, BN=bn_fc2,
                                                   BK=BK, NSPLIT=1, INT8=i8, num_warps=nw, num_stages=ns)
             if prenorm:

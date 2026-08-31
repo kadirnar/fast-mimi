@@ -2,10 +2,10 @@
 
 Same public API as the Hugging Face model (`encode(audio, padding_mask)` / `decode(codes, padding_mask)`), same
 fp32 weights, bit-identical discrete codes and a decoded waveform within rtol 2e-4 / atol 2e-5 of the reference
-on every gated input (see docs/v4/RESULTS.md).  No tensor cores, no reduced precision: exact fp32 FMA
+on every gated input (see the benchmarks).  No tensor cores, no reduced precision: exact fp32 FMA
 everywhere, deterministic.
 
-    from fast_mimi.v4 import build
+    from fast_mimi.fp32 import build
     model = build()                                   # transformers MimiModel (kyutai/mimi, fp32, CUDA) + kernels
     codes = model.encode(audio, mask).audio_codes     # identical to the stock model
     wave = model.decode(codes, mask).audio_values
@@ -13,7 +13,7 @@ everywhere, deterministic.
 Requirements: torch >= 2.13 (CUDA 13), triton >= 3.7, transformers >= 5.14, and an nvcc for the CUDA C++
 kernels (`pip install nvidia-cuda-nvcc nvidia-cuda-cccl nvidia-cuda-crt nvidia-nvvm nvidia-cuda-runtime`
 provides one; `ensure_cuda_home()` discovers it).  The first call for a new input length captures a CUDA graph
-(the kernels compile once, cached under ~/.cache/fast-mimi/v4).
+(the kernels compile once, cached under ~/.cache/fast-mimi/fp32).
 """
 from __future__ import annotations
 

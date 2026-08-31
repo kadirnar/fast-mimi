@@ -20,6 +20,6 @@ torch_compile_debug/
 *.ptx
 *.cubin
 compile_commands.json
-# fast-mimi v3: per-GPU conv autotune cache and benchmark scratch
-src/fast_mimi/v3/tuned_conv.json
-benchmarks/v3/baseline.json
+# per-GPU conv autotune cache and benchmark scratch
+src/fast_mimi/fp16/tuned_conv.json
+benchmarks/fp16/baseline.json

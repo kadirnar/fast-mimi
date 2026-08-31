@@ -5,7 +5,7 @@ import torch
 
 import os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "src"))
-from fast_mimi.v3 import FastMimi, load_mimi_state
+from fast_mimi.fp16 import FastMimi, load_mimi_state
 
 
 def make_inputs(sec, device):
@@ -76,7 +76,7 @@ def main():
         m2 = MimiModel.from_pretrained("kyutai/mimi", torch_dtype=getattr(torch, args.dtype)).cuda().eval()
         fast = _Wrap(m2)
     else:
-        from fast_mimi.v3.backends import build
+        from fast_mimi.fp16.backends import build
         fast = build(args.backend, state, dtype=getattr(torch, args.dtype))
     ok = True
     for sec in args.seconds:

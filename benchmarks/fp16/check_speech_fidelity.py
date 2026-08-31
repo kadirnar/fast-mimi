@@ -5,8 +5,8 @@ import os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "src"))
 import soundfile as sf
 from scipy.signal import resample_poly
-from fast_mimi.v3 import load_mimi_state
-from fast_mimi.v3.backends import build
+from fast_mimi.fp16 import load_mimi_state
+from fast_mimi.fp16.backends import build
 
 torch.backends.cudnn.allow_tf32 = False; torch.backends.cuda.matmul.allow_tf32 = False
 if len(sys.argv) < 2 or not sys.argv[1]:
