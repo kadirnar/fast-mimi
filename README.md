@@ -15,24 +15,15 @@ import torch
 from transformers import MimiModel
 import fast_mimi
 
-model = MimiModel.from_pretrained("kyutai/mimi", dtype=torch.float32).cuda().eval()
-fast_mimi.optimize(model)                        # FP32 - exact
-# fast_mimi.optimize(model, dtype="fp16")        # FP16 - fastest
-# fast_mimi.optimize(model, dtype="bf16")        # BF16 - same speed, wider exponent
+model = MimiModel.from_pretrained("kyutai/mimi").cuda().eval()
+fast_mimi.optimize(model)                       # or dtype="fp16" / "bf16"
 
-audio = torch.randn(1, 1, 24000, device="cuda")  # [batch, channels, samples] @ 24 kHz
-codes = model.encode(audio).audio_codes          # [1, 32, frames] int64
-wave = model.decode(codes).audio_values          # [1, 1, samples] fp32
+audio = torch.randn(1, 1, 24000, device="cuda")
+codes = model.encode(audio).audio_codes
+wave = model.decode(codes).audio_values
 ```
 
-`optimize` patches the model in place and returns it. `encode` / `decode` keep the transformers signatures and return `MimiEncoderOutput` / `MimiDecoderOutput`, so `padding_mask` still works and still truncates the decoded waveform:
-
-```python
-mask = torch.ones_like(audio, dtype=torch.bool)
-wave = model.decode(model.encode(audio, mask).audio_codes, mask).audio_values
-```
-
-Anything the fast path cannot serve falls back to the stock implementation instead of failing. The first call for a new input length compiles the kernels and captures a CUDA graph; later calls reuse it.
+`optimize` patches the model in place, so `encode` and `decode` keep their transformers signatures and output types: `padding_mask` still works and still truncates the waveform, and anything the fast path cannot serve falls back to the stock implementation. The first call for a new input length compiles the kernels and captures a CUDA graph; later calls reuse it.
 
 ## Benchmark
 
